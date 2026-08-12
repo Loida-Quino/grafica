@@ -1,0 +1,2191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Huanuni · Museo Digital</title>
+    <meta name="description" content="Experiencia inmersiva sobre la historia, patrimonio, cultura y minería de Huanuni." />
+    <meta name="theme-color" content="#0a0a0a" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet" />
+
+    <style>
+        /* ============================================================
+           RESET & VARIABLES
+           ============================================================ */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #141414;
+            --bg-card: #1e1e1e;
+            --bg-hover: #2a2a2a;
+            --text-primary: #e8ddd0;
+            --text-secondary: #b8a88a;
+            --text-muted: #7a6e5e;
+            --accent-gold: #d4af37;
+            --accent-silver: #c0c0c0;
+            --accent-bronze: #cd7f32;
+            --accent-coal: #2c2c2c;
+            --border-light: rgba(212, 175, 55, 0.25);
+            --shadow-glow: 0 0 30px rgba(212, 175, 55, 0.08);
+            --font-serif: 'Playfair Display', serif;
+            --font-sans: 'Lato', sans-serif;
+            --transition: 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            --radius: 12px;
+        }
+
+        /* Modo claro */
+        [data-theme="light"] {
+            --bg-primary: #f5f0ea;
+            --bg-secondary: #e8e0d8;
+            --bg-card: #ffffff;
+            --bg-hover: #f0ebe5;
+            --text-primary: #1a1410;
+            --text-secondary: #4a3f38;
+            --text-muted: #8a7a6a;
+            --border-light: rgba(180, 140, 80, 0.3);
+            --shadow-glow: 0 0 30px rgba(180, 140, 80, 0.1);
+        }
+
+        html,
+        body {
+            height: 100%;
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background var(--transition), color var(--transition);
+            overflow: hidden;
+            cursor: none;
+        }
+
+        /* ============================================================
+           CURSOR PERSONALIZADO
+           ============================================================ */
+        #custom-cursor {
+            position: fixed;
+            width: 28px;
+            height: 28px;
+            border: 2px solid var(--accent-gold);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: width 0.2s, height 0.2s, background 0.2s, border-color 0.2s;
+            mix-blend-mode: difference;
+            will-change: transform;
+        }
+        #custom-cursor .dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: var(--accent-gold);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: background 0.2s;
+        }
+        body.no-cursor #custom-cursor {
+            display: none;
+        }
+
+        /* ============================================================
+           LOADER
+           ============================================================ */
+        #loader {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+        }
+        #loader.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        #loader .spinner {
+            width: 60px;
+            height: 60px;
+            border: 3px solid var(--border-light);
+            border-top-color: var(--accent-gold);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+        #loader p {
+            margin-top: 24px;
+            font-family: var(--font-serif);
+            font-size: 1.1rem;
+            letter-spacing: 4px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ============================================================
+           BARRA DE PROGRESO
+           ============================================================ */
+        #progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-gold), var(--accent-bronze));
+            z-index: 999;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* ============================================================
+           MENÚ SUPERIOR - ALINEACIÓN MEJORADA
+           ============================================================ */
+        #top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(10, 10, 10, 0.92);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-bottom: 2px solid var(--accent-gold);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(212, 175, 55, 0.15);
+            z-index: 1000;
+            transition: background var(--transition), border-color var(--transition), box-shadow var(--transition);
+            gap: 12px;
+        }
+        [data-theme="light"] #top-bar {
+            background: rgba(245, 240, 234, 0.95);
+            border-bottom-color: var(--accent-bronze);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1), 0 0 20px rgba(180, 140, 80, 0.2);
+        }
+
+        #top-bar .logo {
+            font-family: var(--font-serif);
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--accent-gold);
+            text-decoration: none;
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        #top-bar .logo span {
+            color: var(--text-secondary);
+            font-weight: 300;
+        }
+
+        /* Navegación horizontal - centrada y con mejor espaciado */
+        #nav-menu {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex: 1 1 auto;
+            justify-content: center;
+            overflow-x: auto;
+            padding: 4px 8px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent-gold) transparent;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 8px;
+        }
+        #nav-menu::-webkit-scrollbar {
+            height: 3px;
+        }
+        #nav-menu::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #nav-menu::-webkit-scrollbar-thumb {
+            background: var(--accent-gold);
+            border-radius: 10px;
+        }
+
+        #nav-menu a {
+            font-family: var(--font-sans);
+            font-size: 0.8rem;
+            font-weight: 300;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 6px 14px;
+            border-radius: 20px;
+            white-space: nowrap;
+            transition: background 0.3s, color 0.3s, border-color 0.3s;
+            border: 1px solid transparent;
+            letter-spacing: 0.3px;
+            flex-shrink: 0;
+        }
+        #nav-menu a:hover,
+        #nav-menu a.active {
+            background: rgba(212, 175, 55, 0.15);
+            color: var(--accent-gold);
+            border-color: var(--border-light);
+        }
+        #nav-menu a.active {
+            background: rgba(212, 175, 55, 0.2);
+            font-weight: 400;
+        }
+
+        /* Acciones (tema, fullscreen) */
+        #top-bar .actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-shrink: 0;
+        }
+        #top-bar .actions button {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: color 0.3s, transform 0.3s;
+            padding: 4px;
+            line-height: 1;
+            border-radius: 8px;
+        }
+        #top-bar .actions button:hover {
+            color: var(--accent-gold);
+            transform: scale(1.1);
+        }
+
+        /* ============================================================
+           BREADCRUMBS
+           ============================================================ */
+        #breadcrumbs {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 900;
+            background: rgba(10, 10, 10, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 8px 20px;
+            border-radius: 40px;
+            border: 1px solid var(--border-light);
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+        #breadcrumbs span {
+            color: var(--text-secondary);
+        }
+        #breadcrumbs .sep {
+            color: var(--text-muted);
+        }
+
+        /* ============================================================
+           SECCIONES (pantallas)
+           ============================================================ */
+        .section {
+            position: fixed;
+            inset: 0;
+            padding: 80px 32px 80px 32px;
+            overflow-y: auto;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.7s ease, visibility 0.7s ease;
+            background: var(--bg-primary);
+            will-change: opacity;
+            z-index: 10;
+        }
+        .section.active {
+            opacity: 1;
+            visibility: visible;
+            z-index: 20;
+        }
+        .section .inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding-top: 20px;
+            padding-bottom: 40px;
+        }
+        .section h2 {
+            font-family: var(--font-serif);
+            font-size: 2.6rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+        }
+        .section .subhead {
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            font-weight: 300;
+            max-width: 700px;
+            line-height: 1.7;
+        }
+
+        /* Scrollbar personalizada */
+        .section::-webkit-scrollbar {
+            width: 5px;
+        }
+        .section::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .section::-webkit-scrollbar-thumb {
+            background: var(--accent-gold);
+            border-radius: 10px;
+        }
+
+        /* ============================================================
+           PANTALLA DE INICIO (cinematográfica)
+           ============================================================ */
+        #section-inicio {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 0;
+            background: var(--bg-primary);
+            position: fixed;
+        }
+        #section-inicio .hero {
+            position: relative;
+            z-index: 2;
+            padding: 20px;
+        }
+        #section-inicio .hero .title-main {
+            font-family: var(--font-serif);
+            font-size: clamp(3.5rem, 12vw, 7rem);
+            font-weight: 700;
+            color: var(--accent-gold);
+            letter-spacing: 6px;
+            text-shadow: 0 0 60px rgba(212, 175, 55, 0.15);
+            animation: fadeUp 1.2s ease forwards;
+            opacity: 0;
+        }
+        #section-inicio .hero .title-sub {
+            font-family: var(--font-serif);
+            font-size: clamp(1rem, 2.5vw, 1.8rem);
+            color: var(--text-secondary);
+            letter-spacing: 8px;
+            margin-top: 8px;
+            font-weight: 300;
+            animation: fadeUp 1.2s ease 0.2s forwards;
+            opacity: 0;
+        }
+        #section-inicio .hero .divider {
+            width: 80px;
+            height: 2px;
+            background: var(--accent-gold);
+            margin: 24px auto;
+            animation: fadeUp 1.2s ease 0.4s forwards;
+            opacity: 0;
+        }
+        #section-inicio .hero .btn-start {
+            display: inline-block;
+            margin-top: 32px;
+            padding: 16px 48px;
+            font-family: var(--font-sans);
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--bg-primary);
+            background: var(--accent-gold);
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: transform 0.4s, box-shadow 0.4s, background 0.3s;
+            animation: fadeUp 1.2s ease 0.6s forwards;
+            opacity: 0;
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.2);
+        }
+        #section-inicio .hero .btn-start:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 50px rgba(212, 175, 55, 0.4);
+            background: #e6c44a;
+        }
+
+        /* Partículas (canvas) */
+        #particles-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ============================================================
+           TARJETAS Y COMPONENTES
+           ============================================================ */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 28px;
+            margin-top: 20px;
+        }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius);
+            padding: 28px 24px;
+            transition: transform 0.4s, box-shadow 0.4s, border-color 0.4s;
+            box-shadow: var(--shadow-glow);
+        }
+        .card:hover {
+            transform: translateY(-6px);
+            border-color: var(--accent-gold);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        }
+        .card h3 {
+            font-family: var(--font-serif);
+            font-size: 1.3rem;
+            color: var(--accent-gold);
+            margin-bottom: 8px;
+        }
+        .card p {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            font-size: 0.95rem;
+        }
+
+        /* ============================================================
+           LÍNEA DE TIEMPO
+           ============================================================ */
+        .timeline {
+            position: relative;
+            padding-left: 32px;
+            margin: 30px 0;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--accent-gold);
+            opacity: 0.3;
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 32px;
+            padding-left: 28px;
+            opacity: 0;
+            transform: translateX(20px);
+            transition: opacity 0.6s, transform 0.6s;
+        }
+        .timeline-item.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -28px;
+            top: 6px;
+            width: 14px;
+            height: 14px;
+            background: var(--accent-gold);
+            border-radius: 50%;
+            border: 2px solid var(--bg-primary);
+            box-shadow: 0 0 0 3px var(--accent-gold);
+        }
+        .timeline-item .year {
+            font-family: var(--font-serif);
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+        }
+        .timeline-item .desc {
+            color: var(--text-secondary);
+            margin-top: 4px;
+            line-height: 1.6;
+        }
+
+        /* ============================================================
+           ESTADÍSTICAS / NÚMEROS ANIMADOS
+           ============================================================ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 24px;
+            margin: 30px 0;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 20px 12px;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border-light);
+        }
+        .stat-item .number {
+            font-family: var(--font-serif);
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+            line-height: 1.2;
+        }
+        .stat-item .label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+
+        /* ============================================================
+           GALERÍA HISTÓRICA
+           ============================================================ */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+        .gallery-grid .gallery-item {
+            aspect-ratio: 4/3;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 1px solid var(--border-light);
+            cursor: pointer;
+            transition: transform 0.4s, border-color 0.4s;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .gallery-grid .gallery-item:hover {
+            transform: scale(1.03);
+            border-color: var(--accent-gold);
+        }
+        .gallery-grid .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Estilo para imágenes clicables en otras secciones */
+        .clickable-image {
+            cursor: pointer;
+            transition: transform 0.3s, filter 0.3s;
+            border-radius: var(--radius);
+        }
+        .clickable-image:hover {
+            transform: scale(1.02);
+            filter: brightness(1.05);
+        }
+
+        /* Lightbox */
+        #lightbox {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(16px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s, visibility 0.4s;
+            padding: 40px;
+        }
+        #lightbox.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        #lightbox .lb-content {
+            max-width: 90vw;
+            max-height: 80vh;
+            position: relative;
+        }
+        #lightbox .lb-content img {
+            width: 100%;
+            height: auto;
+            max-height: 80vh;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        }
+        #lightbox .lb-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 2.4rem;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        #lightbox .lb-close:hover {
+            transform: rotate(90deg);
+        }
+        #lightbox .lb-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #fff;
+            font-size: 2.4rem;
+            padding: 12px 18px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: none; /* Oculto por defecto, se muestra solo en galería */
+        }
+        #lightbox .lb-nav:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        #lightbox .lb-nav.prev {
+            left: -60px;
+        }
+        #lightbox .lb-nav.next {
+            right: -60px;
+        }
+        #lightbox .lb-nav.visible {
+            display: block;
+        }
+
+        /* ============================================================
+           SECCIÓN 3D
+           ============================================================ */
+        #section-3d {
+            padding: 0;
+            background: var(--bg-primary);
+        }
+        #section-3d .inner {
+            max-width: 100%;
+            height: 100%;
+            padding: 0;
+            position: relative;
+        }
+        #three-container {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: var(--bg-primary);
+        }
+        #three-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .model-controls {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            z-index: 30;
+            background: rgba(10, 10, 10, 0.6);
+            backdrop-filter: blur(12px);
+            padding: 12px 20px;
+            border-radius: 50px;
+            border: 1px solid var(--border-light);
+        }
+        .model-controls button {
+            background: transparent;
+            border: 1px solid var(--border-light);
+            color: var(--text-secondary);
+            padding: 6px 18px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: var(--font-sans);
+            letter-spacing: 0.5px;
+        }
+        .model-controls button:hover,
+        .model-controls button.active {
+            background: var(--accent-gold);
+            color: var(--bg-primary);
+            border-color: var(--accent-gold);
+        }
+        .model-controls .info-label {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            padding: 0 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        /* ============================================================
+           SECCIÓN VIRGEN - CONTENEDOR 3D
+           ============================================================ */
+        #virgen-3d-container {
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
+            background: var(--bg-primary);
+            border-radius: var(--radius);
+            border: 1px solid var(--border-light);
+            overflow: hidden;
+            position: relative;
+        }
+        #virgen-3d-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* ============================================================
+           SECCIÓN VIRGEN - GRID
+           ============================================================ */
+        .virgen-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 20px;
+        }
+        .virgen-grid .text-content p {
+            color: var(--text-secondary);
+            line-height: 1.8;
+            margin-bottom: 16px;
+        }
+        @media (max-width: 768px) {
+            .virgen-grid {
+                grid-template-columns: 1fr;
+            }
+            #virgen-3d-container {
+                min-height: 300px;
+            }
+        }
+
+        /* ============================================================
+           FICHA TÉCNICA
+           ============================================================ */
+        .tech-specs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+        .tech-specs .spec {
+            background: var(--bg-card);
+            padding: 16px 20px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-light);
+        }
+        .tech-specs .spec .label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+        }
+        .tech-specs .spec .value {
+            font-family: var(--font-serif);
+            font-size: 1rem;
+            color: var(--text-primary);
+            margin-top: 4px;
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 992px) {
+            #top-bar {
+                padding: 0 16px;
+                gap: 8px;
+                height: 58px;
+            }
+            #top-bar .logo {
+                font-size: 1.2rem;
+            }
+            #nav-menu a {
+                font-size: 0.75rem;
+                padding: 5px 10px;
+            }
+        }
+        @media (max-width: 768px) {
+            #top-bar {
+                padding: 0 12px;
+                height: 54px;
+                flex-wrap: nowrap;
+            }
+            #top-bar .logo {
+                font-size: 1rem;
+                letter-spacing: 1px;
+            }
+            #nav-menu {
+                gap: 2px;
+                margin: 0 4px;
+                justify-content: flex-start;
+            }
+            #nav-menu a {
+                font-size: 0.65rem;
+                padding: 4px 8px;
+                border-radius: 16px;
+            }
+            #top-bar .actions button {
+                font-size: 1rem;
+                padding: 2px;
+            }
+            .section {
+                padding: 68px 16px 80px 16px;
+            }
+            .section h2 {
+                font-size: 2rem;
+            }
+            #breadcrumbs {
+                font-size: 0.65rem;
+                padding: 6px 14px;
+                bottom: 16px;
+            }
+            .model-controls {
+                bottom: 20px;
+                padding: 10px 16px;
+                gap: 8px;
+                max-width: 90vw;
+                flex-wrap: wrap;
+            }
+            .model-controls button {
+                font-size: 0.7rem;
+                padding: 4px 12px;
+            }
+            #lightbox .lb-nav.prev {
+                left: 10px;
+            }
+            #lightbox .lb-nav.next {
+                right: 10px;
+            }
+            .gallery-grid {
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            }
+            #section-inicio .hero .title-main {
+                font-size: 3rem;
+            }
+        }
+        @media (max-width: 480px) {
+            #top-bar .logo {
+                font-size: 0.85rem;
+                letter-spacing: 0px;
+            }
+            #nav-menu a {
+                font-size: 0.55rem;
+                padding: 3px 6px;
+            }
+            #top-bar .actions button {
+                font-size: 0.9rem;
+            }
+            #section-inicio .hero .title-main {
+                font-size: 2.4rem;
+                letter-spacing: 2px;
+            }
+            #section-inicio .hero .title-sub {
+                font-size: 0.8rem;
+                letter-spacing: 4px;
+            }
+            #section-inicio .hero .btn-start {
+                padding: 14px 32px;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* ============================================================
+           UTILITIES
+           ============================================================ */
+        .text-gold {
+            color: var(--accent-gold);
+        }
+        .mb-2 {
+            margin-bottom: 16px;
+        }
+        .mt-2 {
+            margin-top: 16px;
+        }
+        .flex-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .gap-2 {
+            gap: 16px;
+        }
+
+        /* Estilo para contenedores de imágenes */
+        .image-container {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border-light);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 4/3;
+        }
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .image-container-wide {
+            aspect-ratio: 16/9;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================
+    LOADER
+    ============================================================ -->
+    <div id="loader" role="status" aria-label="Cargando">
+        <div class="spinner"></div>
+        <p>Cargando experiencia</p>
+    </div>
+
+    <!-- ============================================================
+    CURSOR PERSONALIZADO
+    ============================================================ -->
+    <div id="custom-cursor" aria-hidden="true">
+        <div class="dot"></div>
+    </div>
+
+    <!-- ============================================================
+    BARRA DE PROGRESO
+    ============================================================ -->
+    <div id="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+
+    <!-- ============================================================
+    MENÚ SUPERIOR CON NAVEGACIÓN HORIZONTAL - ALINEADO
+    ============================================================ -->
+    <header id="top-bar" role="banner">
+        <a href="#" class="logo" id="logo-link">Huanuni · Historia <span></span></a>
+
+        <nav id="nav-menu" aria-label="Navegación principal">
+            <a href="#section-inicio" data-section="section-inicio" class="active">Inicio</a>
+            <a href="#section-historia" data-section="section-historia">Historia</a>
+            <a href="#section-mineria" data-section="section-mineria">Minería</a>
+            <a href="#section-plaza" data-section="section-plaza">Plaza Fermín López</a>
+            <a href="#section-galeria" data-section="section-galeria">Galería</a>
+            <a href="#section-3d" data-section="section-3d">Modelos 3D</a>
+            <a href="#section-virgen" data-section="section-virgen">Virgen del Rosario</a>
+            <a href="#section-ficha" data-section="section-ficha">Informacion del Municipio</a>
+        </nav>
+
+        <div class="actions">
+            <!-- Navegación entre páginas (agregado) -->
+            <a href="index.html" title="Inicio" aria-label="Ir a Inicio" style="color:var(--text-secondary);text-decoration:none;font-size:1.2rem;padding:4px;transition:color 0.3s;line-height:1;" onmouseover="this.style.color='var(--accent-gold)'" onmouseout="this.style.color='var(--text-secondary)'">🏠</a>
+            <a href="entorno3d.html" title="Entorno 3D" aria-label="Ir a Entorno 3D" style="color:var(--text-secondary);text-decoration:none;font-size:1.2rem;padding:4px;transition:color 0.3s;line-height:1;" onmouseover="this.style.color='var(--accent-gold)'" onmouseout="this.style.color='var(--text-secondary)'">🏛️</a>
+            <button id="fullscreen-btn" aria-label="Pantalla completa" title="Pantalla completa">⛶</button>
+            <button id="theme-toggle-top" aria-label="Cambiar tema" title="Cambiar tema">☀</button>
+        </div>
+    </header>
+
+    <!-- ============================================================
+    BREADCRUMBS
+    ============================================================ -->
+    <div id="breadcrumbs" aria-label="Ruta de navegación">
+        <span id="bc-current">Inicio</span>
+    </div>
+
+    <!-- ============================================================
+    LIGHTBOX
+    ============================================================ -->
+    <div id="lightbox" role="dialog" aria-modal="true" aria-label="Visor de imágenes">
+        <button class="lb-close" id="lb-close" aria-label="Cerrar">✕</button>
+        <button class="lb-nav prev" id="lb-prev" aria-label="Anterior">‹</button>
+        <button class="lb-nav next" id="lb-next" aria-label="Siguiente">›</button>
+        <div class="lb-content">
+            <img src="" alt="Imagen ampliada" id="lb-image" />
+        </div>
+    </div>
+
+    <!-- ============================================================
+    PARTÍCULAS (canvas para inicio)
+    ============================================================ -->
+    <canvas id="particles-canvas"></canvas>
+
+    <!-- ============================================================
+    SECCIÓN INICIO
+    ============================================================ -->
+    <section id="section-inicio" class="section active" role="main" aria-label="Inicio">
+        <div class="hero">
+            <div class="title-main">HUANUNI</div>
+            <div class="title-sub">Historia · Patrimonio · Cultura · Minería</div>
+            <div class="divider"></div>
+            <button class="btn-start" id="btn-start">Comenzar recorrido</button>
+        </div>
+    </section>
+
+    <!-- ============================================================
+    SECCIÓN HISTORIA
+    ============================================================ -->
+    <section id="section-historia" class="section" role="region" aria-label="Historia de Huanuni">
+        <div class="inner">
+            <h2>Historia de Huanuni</h2>
+            <p class="subhead">Desde sus orígenes hasta la actualidad, un recorrido por el tiempo.</p>
+
+            <div class="timeline" id="timeline">
+                <div class="timeline-item">
+                    <div class="year">1789</div>
+                    <div class="desc">Fundación del pueblo de Huanuni, ligado a las primeras explotaciones mineras en la zona.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="year">1825</div>
+                    <div class="desc">Tras la independencia, la minería cobra mayor relevancia y se impulsa la producción de estaño.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="year">1900</div>
+                    <div class="desc">Llegan empresas internacionales y se modernizan los métodos de extracción.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="year">1952</div>
+                    <div class="desc">Revolución Nacional y nacionalización de las minas, Huanuni se convierte en eje de la minería estatal.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="year">1985</div>
+                    <div class="desc">Crisis del estaño, pero la comunidad resiste y diversifica su economía.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="year">Actualidad</div>
+                    <div class="desc">Huanuni mantiene su identidad minera, con un creciente interés en su patrimonio cultural e histórico.</div>
+                </div>
+            </div>
+
+            <div class="card-grid" style="margin-top:40px;">
+                <div class="card">
+                    <h3>Origen del nombre</h3>
+                    <p>“Huanuni” proviene del aymara <em>“Wanuni”</em>, que significa “lugar donde hay vicuñas” o “cerro de la vicuña”.</p>
+                </div>
+                <div class="card">
+                    <h3>Crecimiento urbano</h3>
+                    <p>El pueblo creció alrededor de la mina, con barrios que conservan la arquitectura típica de los campamentos mineros.</p>
+                </div>
+                <div class="card">
+                    <h3>Importancia regional</h3>
+                    <p>Huanuni es uno de los centros mineros más importantes de Bolivia, dejando un importante legado en el país</p>
+                </div>
+            </div>
+
+            <!-- ============================================================
+            HISTORIA - 3 IMÁGENES
+            Edita el atributo src de cada <img> con la ruta de tu imagen
+            ============================================================ -->
+            <div style="margin-top:48px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;">
+                <div class="image-container">
+                    <img src="./imagenes/historia1.jpeg" alt="Historia 1" class="clickable-image" />
+                    <!-- REEMPLAZAR CON: assets/img/historia-1.jpg -->
+                </div>
+                <div class="image-container">
+                    <img src="./imagenes/historia2.jpeg" alt="Historia 2" class="clickable-image" />
+                    <!-- REEMPLAZAR CON: assets/img/historia-2.jpg -->
+                </div>
+                <div class="image-container">
+                    <img src="./imagenes/historia3.jpeg" alt="Historia 3" class="clickable-image" />
+                    <!-- REEMPLAZAR CON: assets/img/historia-3.jpg -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+    SECCIÓN MINERÍA
+    ============================================================ -->
+    <section id="section-mineria" class="section" role="region" aria-label="Huanuni y la minería">
+        <div class="inner">
+            <h2>Huanuni y la minería</h2>
+            <p class="subhead">El motor económico y cultural que forjó la identidad del pueblo.</p>
+
+            <div class="stats-grid" id="stats-grid">
+                <div class="stat-item">
+                    <div class="number" data-count="120">0</div>
+                    <div class="label">Años de historia minera</div>
+                </div>
+                <div class="stat-item">
+                    <div class="number" data-count="4500">0</div>
+                    <div class="label">Trabajadores (aprox.)</div>
+                </div>
+                <div class="stat-item">
+                    <div class="number" data-count="70">0</div>
+                    <div class="label">% de producción de estaño (Bolivia)</div>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:40px;">
+                <div class="card">
+                    <h3>Historia minera</h3>
+                    <p>La explotación de estaño y otros minerales comenzó en el siglo XVIII. Huanuni fue parte del “ciclo del estaño” que impulsó la economía boliviana.</p>
+                    <p style="margin-top:12px;">La mina de Huanuni es una de las más profundas del país, con más de 500 metros de profundidad.</p>
+                </div>
+                <div class="card">
+                    <h3>Impacto económico</h3>
+                    <p>La minería ha sido el pilar económico de la región, generando empleo, infraestructura y desarrollo social.</p>
+                    <p style="margin-top:12px;">En los últimos años, la cooperativización ha transformado la estructura productiva.</p>
+                </div>
+                <div class="card" style="grid-column:1/-1;">
+                    <h3>Evolución tecnológica</h3>
+                    <p>Desde el uso de herramientas manuales hasta la maquinaria moderna, la tecnología minera ha evolucionado constantemente, mejorando la seguridad y la eficiencia.</p>
+                </div>
+            </div>
+
+            <!-- ============================================================
+            MINERÍA - 1 IMAGEN (infografía)
+            Edita el atributo src de <img> con la ruta de tu imagen
+            ============================================================ -->
+            <div style="margin-top:40px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border-light);padding:20px;text-align:center;">
+                <div class="image-container image-container-wide" style="max-width:800px;margin:0 auto;">
+                    <img src="./imagenes/infografia.jpg" alt="Infografía minería" class="clickable-image" />
+                    <!-- REEMPLAZAR CON: assets/img/infografia-mineria.png -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+    SECCIÓN PLAZA FERMÍN LÓPEZ
+    ============================================================ -->
+    <section id="section-plaza" class="section" role="region" aria-label="Plaza Fermín López">
+        <div class="inner">
+            <h2>Plaza Fermín López</h2>
+            <p class="subhead">Corazón de la vida social y cultural de Huanuni.</p>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:20px;">
+                <div>
+                    <!-- ============================================================
+                    PLAZA - 1 IMAGEN
+                    Edita el atributo src de <img> con la ruta de tu imagen
+                    ============================================================ -->
+                    <div class="image-container">
+                        <img src="./imagenes/plaza.jpeg" alt="Plaza Fermín López" class="clickable-image" />
+                        <!-- REEMPLAZAR CON: assets/img/plaza-fermin-lopez.jpg -->
+                    </div>
+                </div>
+                <div class="card" style="display:flex;flex-direction:column;justify-content:center;">
+                    <h3>Historia y construcción</h3>
+                    <p>La Plaza Fermín López es el principal espacio cívico y social de Huanuni. En sus inicios fue conocida como Plaza de la Recoba, ya que funcionaba como un pequeño mercado para los primeros habitantes de la población. Con el crecimiento del distrito minero, la plaza se consolidó como el centro de las actividades comerciales, cívicas y culturales del municipio.</p>
+                    <p>Posteriormente recibió el nombre de Fermín López, en homenaje al pionero de la minería que contribuyó al desarrollo de Huanuni. A lo largo de los años ha sido remodelada para mejorar sus áreas verdes, senderos y espacios de descanso. En la actualidad destaca por su emblemático casco minero y los monumentos que recuerdan la historia, la tradición y la identidad minera de la región.</p>
+                    <p >Cuenta con jardines, una fuente central y está rodeada de edificios históricos que reflejan la arquitectura de la época.</p>
+                </div>
+            </div>
+
+            <div style="margin-top:40px;">
+                <h3 style="font-family:var(--font-serif);color:var(--accent-gold);font-size:1.4rem;">Eventos y función social</h3>
+                <div class="card-grid">
+                    <div class="card">
+                        <h3>Fiestas patronales</h3>
+                        <p>La plaza es escenario de las celebraciones en honor a la Virgen del Rosario, con danzas, música y ferias.</p>
+                    </div>
+                    <div class="card">
+                        <h3>Reuniones vecinales</h3>
+                        <p>Espacio para el diálogo comunitario, marchas y actividades cívicas.</p>
+                    </div>
+                    <div class="card">
+                        <h3>Mercado y comercio</h3>
+                        <p>Alrededor de la plaza se desarrolla un activo comercio local, manteniendo la tradición.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+    SECCIÓN GALERÍA HISTÓRICA
+    ============================================================ -->
+    <section id="section-galeria" class="section" role="region" aria-label="Galería histórica">
+        <div class="inner">
+            <h2>Galería Histórica</h2>
+            <p class="subhead">Imágenes que narran la evolución de Huanuni.</p>
+
+            <div class="gallery-grid" id="gallery-grid">
+                <!-- ============================================================
+                GALERÍA - 8 IMÁGENES
+                Edita el atributo src de cada <img> con la ruta de tu imagen
+                ============================================================ -->
+                <div class="gallery-item" data-index="0">
+                    <img src="./imagenes/evo1.jpeg" alt="Galería 1" class="clickable-image" />
+                </div>
+                <div class="gallery-item" data-index="1">
+                    <img src="./imagenes/evo2.jpeg" alt="Galería 2" class="clickable-image" />
+                </div>
+                <div class="gallery-item" data-index="2">
+                    <img src="./imagenes/evo3.jpeg" alt="Galería 3" class="clickable-image" />
+                </div>
+                <div class="gallery-item" data-index="3">
+                    <img src="./imagenes/evo4.jpeg" alt="Galería 4" class="clickable-image" />
+                </div>
+                <div class="gallery-item" data-index="4">
+                    <img src="./imagenes/evo5.jpeg" alt="Galería 5" class="clickable-image" />
+                </div>
+                <div class="gallery-item" data-index="5">
+                    <img src="./imagenes/evo6.jpeg" alt="Galería 6" class="clickable-image" />
+                </div>
+                <div class="gallery-item" data-index="6">
+                    <img src="./imagenes/evo7.jpeg" alt="Galería 7" class="clickable-image" />
+                </div>
+                <div class="gallery-item" data-index="7">
+                    <img src="./imagenes/evo8.jpeg" alt="Galería 8" class="clickable-image" />
+                </div>
+            </div>
+
+            <p style="margin-top:24px;color:var(--text-muted);font-size:0.85rem;text-align:center;">
+                <!-- REEMPLAZAR CON: imágenes reales en la galería -->
+                 </p>
+        </div>
+    </section>
+
+    <!-- ============================================================
+    SECCIÓN MODELOS 3D
+    ============================================================ -->
+    <section id="section-3d" class="section" role="region" aria-label="Modelos 3D">
+        <div class="inner">
+            <div id="three-container"></div>
+            <div class="model-controls" id="model-controls">
+                <span class="info-label">Modelo:</span>
+                <button class="active" data-model="casco">Casco minero</button>
+                <button data-model="bolivar">Simón Bolívar</button>
+                <button data-model="fermin">Fermín López</button>
+                <button data-model="pantaleon">Pantaleón Dalence</button>
+                <button data-model="virgen">Virgen del Rosario</button>
+                <button id="reset-cam" style="border-color:var(--accent-silver);">⟲ Reset</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+    SECCIÓN VIRGEN DEL ROSARIO - CON VISOR 3D
+    ============================================================ -->
+    <section id="section-virgen" class="section" role="region" aria-label="Virgen del Rosario">
+        <div class="inner">
+            <h2>Virgen del Rosario</h2>
+            <p class="subhead">Fe, tradición y protección de los mineros.</p>
+
+            <div class="virgen-grid">
+                <div class="text-content">
+                    <p>La Virgen del Rosario es la patrona de Huanuni. Su devoción se remonta a los inicios de la minería, cuando los trabajadores le pedían protección en las profundidades de la tierra.</p>
+                    <p>Cada 7 de octubre se celebra una multitudinaria fiesta con danzas, música y procesiones que recorren las calles del pueblo.</p>
+                    <p>La imagen de la Virgen es llevada a la mina en una emotiva peregrinación, simbolizando la unión entre la fe y el trabajo.</p>
+                    <p style="margin-top:16px;font-style:italic;color:var(--accent-gold);">“La Virgen del Rosario, luz en la oscuridad del socavón.”</p>
+
+                    <!-- ============================================================
+                    VIRGEN - IMAGEN OPCIONAL
+                    Edita el atributo src de <img> con la ruta de tu imagen
+                    ============================================================ -->
+                    <div style="margin-top:24px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border-light);padding:20px;text-align:center;">
+                        <div class="image-container" style="max-width:400px;margin:0 auto;">
+                            <img src="./imagenes/virgen.webp" alt="Virgen del Rosario" class="clickable-image" />
+                            <!-- REEMPLAZAR CON: assets/img/virgen-rosario.jpg -->
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <!-- ============================================================
+                    VISOR 3D DE LA VIRGEN - CARGA EL MISMO MODELO QUE EN LA SALA 3D
+                    ============================================================ -->
+                    <div id="virgen-3d-container"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+    SECCIÓN DATOS CURIOSOS
+    ============================================================ -->
+    <section id="section-curiosos" class="section" role="region" aria-label="Datos curiosos">
+        <div class="inner">
+            <h2>Datos Curiosos</h2>
+            <p class="subhead">Pequeñas historias que hacen grande a Huanuni.</p>
+
+            <div class="card-grid">
+                <div class="card">
+                    <h3>🦙 El nombre</h3>
+                    <p>“Huanuni” deriva del aymara “Wanuni” que significa “lugar de vicuñas”. En sus cerros habitaban estos animales.</p>
+                </div>
+                <div class="card">
+                    <h3>⛏️ El socavón más profundo</h3>
+                    <p>La mina Huanuni tiene más de 500 metros de profundidad, con niveles que descienden hasta el sexto nivel.</p>
+                </div>
+                <div class="card">
+                    <h3>🏛️ Arquitectura minera</h3>
+                    <p>Las casas de los barrios mineros conservan un estilo único, con techos de calamina y fachadas de adobe.</p>
+                </div>
+                <div class="card">
+                    <h3>🎭 Fiesta del Rosario</h3>
+                    <p>La festividad de la Virgen del Rosario congrega a miles de personas y es Patrimonio Cultural del municipio.</p>
+                </div>
+                <div class="card">
+                    <h3>📜 La plaza</h3>
+                    <p>La Plaza Fermín López fue el centro de la vida social y política durante la época de la nacionalización.</p>
+                </div>
+                <div class="card">
+                    <h3>🛤️ Tren minero</h3>
+                    <p>Existía un ferrocarril que conectaba la mina con la ciudad de Oruro, hoy en desuso pero con vestigios.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+    SECCIÓN FICHA TÉCNICA
+    ============================================================ -->
+    <section id="section-ficha" class="section" role="region" aria-label="Ficha técnica">
+        <div class="inner">
+            <h2>Información del Municipio</h2>
+
+            <div class="tech-specs">
+                <div class="spec"><div class="label">Nombre oficial</div><div class="value">Municipio de Huanuni</div></div>
+                <div class="spec"><div class="label">Provincia</div><div class="value">Pantaleón Dalence</div></div>
+                <div class="spec"><div class="label">Departamento</div><div class="value">Oruro</div></div>
+                <div class="spec"><div class="label">Fundación</div><div class="value">1912 </div></div>
+                <div class="spec"><div class="label">Población</div><div class="value">25.000 hab.</div></div>
+                <div class="spec"><div class="label">Principal actividad</div><div class="value">Minería (estaño, plata, zinc)</div></div>
+                <div class="spec"><div class="label">Patrona</div><div class="value">Virgen del Rosario</div></div>
+            </div>
+
+            <!-- ============================================================
+            EXPLORA MÁS - CTA
+            ============================================================ -->
+            <div style="margin-top:48px; text-align:center;">
+                <h3 style="font-family:var(--font-serif); font-size:2rem; color:var(--accent-gold); margin-bottom:12px;">¿Quieres ver un poco más?</h3>
+                <p style="color:var(--text-secondary); margin-bottom:28px; font-size:1rem;">Explora la plaza en 3D o regresa a la página principal para ver los monumentos interactivos.</p>
+                <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
+                    <a href="entorno3d.html" style="display:inline-block; padding:16px 36px; background:linear-gradient(135deg, var(--accent-gold), var(--accent-bronze)); color:#0a0a0a; font-family:var(--font-sans); font-size:1rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; border-radius:40px; text-decoration:none; transition:transform 0.3s, box-shadow 0.3s; box-shadow:0 0 20px rgba(212,175,55,0.3);" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 0 40px rgba(212,175,55,0.5)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 0 20px rgba(212,175,55,0.3)';"> Explorar entorno 3D</a>
+                    <a href="index.html" style="display:inline-block; padding:16px 36px; background:transparent; color:var(--accent-gold); font-family:var(--font-sans); font-size:1rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; border-radius:40px; text-decoration:none; border:2px solid var(--accent-gold); transition:transform 0.3s, background 0.3s, color 0.3s;" onmouseover="this.style.transform='scale(1.05)'; this.style.background='var(--accent-gold)'; this.style.color='#0a0a0a';" onmouseout="this.style.transform='scale(1)'; this.style.background='transparent'; this.style.color='var(--accent-gold)';"> Ir a la Plaza Principal</a>
+                </div>
+            </div>
+
+          
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================
+    SCRIPTS: Three.js + lógica principal
+    ============================================================ -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        // ============================================================
+        // MÓDULOS
+        // ============================================================
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        // ============================================================
+        // DOM REFS
+        // ============================================================
+        const $ = (sel) => document.querySelector(sel);
+        const $$ = (sel) => document.querySelectorAll(sel);
+
+        const sections = $$('.section');
+        const navLinks = $$('#nav-menu a');
+        const breadcrumb = $('#bc-current');
+        const progressBar = $('#progress-bar');
+        const loader = $('#loader');
+        const startBtn = $('#btn-start');
+        const themeToggleTop = $('#theme-toggle-top');
+        const fullscreenBtn = $('#fullscreen-btn');
+        const customCursor = $('#custom-cursor');
+        const threeContainer = $('#three-container');
+        const modelBtns = $$('#model-controls button[data-model]');
+        const resetCamBtn = $('#reset-cam');
+        const lightbox = $('#lightbox');
+        const lbImage = $('#lb-image');
+        const lbClose = $('#lb-close');
+        const lbPrev = $('#lb-prev');
+        const lbNext = $('#lb-next');
+        const logoLink = $('#logo-link');
+
+        let currentSection = 'section-inicio';
+        let galleryItems = [];
+        let galleryIndex = 0;
+        let isLightboxOpen = false;
+        let isGalleryMode = false; // para saber si estamos navegando en galería
+
+        // ============================================================
+        // ESTADO DE TEMA
+        // ============================================================
+        let theme = localStorage.getItem('huanuni-theme') || 'dark';
+        applyTheme(theme);
+
+        function applyTheme(t) {
+            document.documentElement.setAttribute('data-theme', t);
+            const isDark = t === 'dark';
+            themeToggleTop.textContent = isDark ? '☀' : '🌙';
+            localStorage.setItem('huanuni-theme', t);
+            theme = t;
+        }
+
+        function toggleTheme() {
+            const next = theme === 'dark' ? 'light' : 'dark';
+            applyTheme(next);
+        }
+
+        // ============================================================
+        // CURSOR PERSONALIZADO
+        // ============================================================
+        if (window.matchMedia('(pointer: fine)').matches) {
+            document.addEventListener('mousemove', (e) => {
+                customCursor.style.left = e.clientX + 'px';
+                customCursor.style.top = e.clientY + 'px';
+            });
+            document.addEventListener('mouseleave', () => {
+                customCursor.style.opacity = '0';
+            });
+            document.addEventListener('mouseenter', () => {
+                customCursor.style.opacity = '1';
+            });
+            document.addEventListener('mousedown', () => {
+                customCursor.style.width = '20px';
+                customCursor.style.height = '20px';
+            });
+            document.addEventListener('mouseup', () => {
+                customCursor.style.width = '28px';
+                customCursor.style.height = '28px';
+            });
+        } else {
+            document.body.classList.add('no-cursor');
+        }
+
+        // ============================================================
+        // NAVEGACIÓN ENTRE SECCIONES
+        // ============================================================
+        function navigateTo(sectionId) {
+            if (sectionId === currentSection) return;
+            const target = document.getElementById(sectionId);
+            if (!target) return;
+
+            sections.forEach(sec => sec.classList.remove('active'));
+            target.classList.add('active');
+            currentSection = sectionId;
+
+            const link = document.querySelector(`#nav-menu a[data-section="${sectionId}"]`);
+            breadcrumb.textContent = link ? link.textContent : 'Inicio';
+
+            navLinks.forEach(a => a.classList.toggle('active', a.dataset.section === sectionId));
+
+            const total = navLinks.length;
+            const idx = Array.from(navLinks).findIndex(a => a.dataset.section === sectionId);
+            const pct = ((idx + 1) / total) * 100;
+            progressBar.style.width = pct + '%';
+            progressBar.setAttribute('aria-valuenow', Math.round(pct));
+
+            localStorage.setItem('huanuni-last-section', sectionId);
+            target.scrollTop = 0;
+
+            if (sectionId === 'section-historia') animateTimeline();
+            if (sectionId === 'section-mineria') animateStats();
+            if (sectionId === 'section-3d') setTimeout(() => resizeRenderer(), 200);
+            if (sectionId === 'section-virgen') setTimeout(() => resizeVirgenRenderer(), 200);
+        }
+
+        // ============================================================
+        // TIMELINE ANIMATION
+        // ============================================================
+        function animateTimeline() {
+            const items = document.querySelectorAll('.timeline-item');
+            items.forEach((item, i) => {
+                setTimeout(() => item.classList.add('visible'), i * 200 + 200);
+            });
+        }
+
+        // ============================================================
+        // STATS ANIMATION
+        // ============================================================
+        function animateStats() {
+            const stats = document.querySelectorAll('.stat-item .number');
+            stats.forEach(el => {
+                const target = parseInt(el.dataset.count, 10);
+                if (!target) return;
+                let current = 0;
+                const step = Math.ceil(target / 40);
+                const interval = setInterval(() => {
+                    current += step;
+                    if (current >= target) {
+                        current = target;
+                        clearInterval(interval);
+                    }
+                    el.textContent = current + (target > 100 ? '' : '');
+                }, 30);
+            });
+        }
+
+        // ============================================================
+        // LIGHTBOX - FUNCIONES MEJORADAS PARA TODAS LAS IMÁGENES
+        // ============================================================
+        function openLightbox(src, isGallery = false, index = 0) {
+            if (!src) return;
+            lbImage.src = src;
+            lbImage.alt = 'Imagen ampliada';
+            lbImage.style.display = 'block';
+
+            // Ocultar mensaje de placeholder si existe
+            const msg = document.querySelector('.lb-msg');
+            if (msg) msg.remove();
+
+            isGalleryMode = isGallery;
+            galleryIndex = index;
+
+            // Mostrar/ocultar flechas de navegación
+            if (isGallery) {
+                lbPrev.classList.add('visible');
+                lbNext.classList.add('visible');
+            } else {
+                lbPrev.classList.remove('visible');
+                lbNext.classList.remove('visible');
+            }
+
+            lightbox.classList.add('active');
+            isLightboxOpen = true;
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            lightbox.classList.remove('active');
+            isLightboxOpen = false;
+            document.body.style.overflow = '';
+        }
+
+        function navigateLightbox(dir) {
+            if (!isGalleryMode) return;
+            const items = document.querySelectorAll('.gallery-item');
+            let newIdx = galleryIndex + dir;
+            if (newIdx < 0) newIdx = items.length - 1;
+            if (newIdx >= items.length) newIdx = 0;
+            const img = items[newIdx].querySelector('img');
+            if (img) {
+                openLightbox(img.src, true, newIdx);
+            }
+        }
+
+        // ============================================================
+        // EVENTOS DE LIGHTBOX
+        // ============================================================
+        lbClose.addEventListener('click', closeLightbox);
+        lbPrev.addEventListener('click', () => navigateLightbox(-1));
+        lbNext.addEventListener('click', () => navigateLightbox(1));
+        lightbox.addEventListener('click', (e) => {
+            if (e.target === lightbox) closeLightbox();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (!isLightboxOpen) return;
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowLeft') navigateLightbox(-1);
+            if (e.key === 'ArrowRight') navigateLightbox(1);
+        });
+
+        // ============================================================
+        // INICIALIZACIÓN DE GALERÍA Y CLICK EN IMÁGENES
+        // ============================================================
+        function initGalleryAndImages() {
+            // Galería: cada .gallery-item tiene su propio evento
+            const galleryItems = document.querySelectorAll('.gallery-item');
+            galleryItems.forEach((item, idx) => {
+                const img = item.querySelector('img');
+                if (img) {
+                    // Eliminar cualquier evento previo y añadir el nuevo
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (img.src) {
+                            openLightbox(img.src, true, idx);
+                        }
+                    });
+                }
+            });
+
+            // Todas las imágenes con clase .clickable-image que NO estén dentro de .gallery-item
+            const otherImages = document.querySelectorAll('.clickable-image:not(.gallery-item img)');
+            otherImages.forEach(img => {
+                img.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (img.src) {
+                        openLightbox(img.src, false, 0);
+                    }
+                });
+            });
+        }
+
+        // ============================================================
+        // THREE.JS - SALA DE MODELOS 3D (principal) - OPTIMIZADO
+        // ============================================================
+        // ============================================================
+        // IMPORTANTE: AQUÍ DEBES ASIGNAR LAS RUTAS DE TUS MODELOS .GLB O .GLTF
+        // ============================================================
+        const models = {
+            casco:    { name: 'Casco minero',    file: './models/casco_completo.glb' },
+            bolivar:  { name: 'Simón Bolívar',   file: './models/simon_bolivar.glb' },
+            fermin:   { name: 'Fermín López',    file: './models/fermin_lopez.glb' },
+            pantaleon:{ name: 'Pantaleón Dalence', file: './models/Pantaleon_Dalence_Jimenez.glb' },
+            virgen:   { name: 'Virgen del Rosario', file: './models/virgen_ros.glb' },
+        };
+
+        // ============================================================
+        // CONFIGURACIÓN DE TAMAÑO (scale) Y POSICIÓN (position) PARA CADA MODELO
+        // ============================================================
+        const modelSettings = {
+            casco: {
+                scale: { x: 0.3, y: 0.3, z: 0.3 },
+                position: { x: 0, y: 0.3, z: -1 }
+            },
+            bolivar: {
+                scale: { x: 1.0, y: 1.0, z: 1.0 },
+                position: { x: 0, y: 0.5, z: 0 }
+            },
+            fermin: {
+                scale: { x: 1.0, y: 1.0, z: 1.0 },
+                position: { x: 0, y: 0.5, z: 0 }
+            },
+            pantaleon: {
+                scale: { x: 1.0, y: 1.0, z: 1.0 },
+                position: { x: 0, y: 0.5, z: 0 }
+            },
+            virgen: {
+                scale: { x: 1.0, y: 1.0, z: 1.0 },
+                position: { x: 0, y: 0.5, z: 0 }
+            }
+        };
+
+        let scene, camera, renderer, controls;
+        let modelGroup = new THREE.Group();
+        let is3DReady = false;
+
+        function initThree() {
+            try {
+                const container = threeContainer;
+                const width = container.clientWidth || window.innerWidth;
+                const height = container.clientHeight || window.innerHeight - 64;
+
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x0a0a0a);
+
+                camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+                camera.position.set(4, 3, 6);
+                camera.lookAt(0, 0, 0);
+
+                renderer = new THREE.WebGLRenderer({
+                    antialias: true,
+                    alpha: false,
+                    powerPreference: "low-power"
+                });
+                renderer.setSize(width, height);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+                renderer.shadowMap.enabled = true;
+                renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                renderer.shadowMap.mapSize = new THREE.Vector2(512, 512);
+                renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                renderer.toneMappingExposure = 1.2;
+                container.appendChild(renderer.domElement);
+
+                controls = new OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.08;
+                controls.minDistance = 2;
+                controls.maxDistance = 15;
+                controls.autoRotate = false;
+                controls.target.set(0, 0.5, 0);
+                controls.update();
+
+                const ambient = new THREE.AmbientLight(0x404060, 0.4);
+                scene.add(ambient);
+
+                const dirLight = new THREE.DirectionalLight(0xffeedd, 1.8);
+                dirLight.position.set(5, 10, 7);
+                dirLight.castShadow = true;
+                dirLight.shadow.mapSize = new THREE.Vector2(512, 512);
+                scene.add(dirLight);
+
+                const fill = new THREE.DirectionalLight(0x4488ff, 0.5);
+                fill.position.set(-3, 2, -4);
+                scene.add(fill);
+
+                const back = new THREE.DirectionalLight(0x8866ff, 0.3);
+                back.position.set(-2, 1, -5);
+                scene.add(back);
+
+                const point = new THREE.PointLight(0xffaa66, 0.6, 10);
+                point.position.set(1, 2, 3);
+                scene.add(point);
+
+                const floorGeo = new THREE.CircleGeometry(3.2, 24);
+                const floorMat = new THREE.MeshStandardMaterial({
+                    color: 0x1a1a1a,
+                    roughness: 0.7,
+                    metalness: 0.3,
+                    transparent: true,
+                    opacity: 0.8,
+                    side: THREE.DoubleSide,
+                });
+                const floor = new THREE.Mesh(floorGeo, floorMat);
+                floor.rotation.x = -Math.PI / 2;
+                floor.position.y = -0.5;
+                floor.receiveShadow = true;
+                scene.add(floor);
+
+                const ringGeo = new THREE.TorusGeometry(1.8, 0.03, 12, 48);
+                const ringMat = new THREE.MeshStandardMaterial({
+                    color: 0xd4af37,
+                    roughness: 0.3,
+                    metalness: 0.7,
+                    emissive: 0xd4af37,
+                    emissiveIntensity: 0.1,
+                });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.rotation.x = -Math.PI / 2;
+                ring.position.y = -0.48;
+                scene.add(ring);
+
+                modelGroup.position.y = 0;
+                scene.add(modelGroup);
+
+                loadModel('casco');
+
+                is3DReady = true;
+                resizeRenderer();
+
+                renderer.setAnimationLoop(() => {
+                    if (is3DReady && document.getElementById('section-3d').classList.contains('active')) {
+                        controls.update();
+                        renderer.render(scene, camera);
+                    }
+                });
+            } catch (error) {
+                console.error('Error en initThree:', error);
+            }
+        }
+
+        function loadModel(key) {
+            while (modelGroup.children.length) {
+                const child = modelGroup.children[0];
+                modelGroup.remove(child);
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+            }
+
+            const file = models[key]?.file;
+            const settings = modelSettings[key] || { scale: { x: 1, y: 1, z: 1 }, position: { x: 0, y: 0, z: 0 } };
+
+            if (file) {
+                const loader = new GLTFLoader();
+                loader.load(file, (gltf) => {
+                    const model = gltf.scene;
+                    model.scale.set(settings.scale.x, settings.scale.y, settings.scale.z);
+                    model.position.set(settings.position.x, settings.position.y, settings.position.z);
+                    modelGroup.add(model);
+                    controls.target.set(0, 0.5, 0);
+                }, undefined, (error) => {
+                    console.warn('Error cargando modelo:', error);
+                    createPlaceholder(key, settings);
+                });
+            } else {
+                createPlaceholder(key, settings);
+            }
+
+            modelBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.model === key));
+        }
+
+        function createPlaceholder(key, settings) {
+            let geo;
+            const color = 0xd4af37;
+            switch (key) {
+                case 'casco':
+                    geo = new THREE.CylinderGeometry(0.8, 0.9, 1.2, 6);
+                    break;
+                case 'bolivar':
+                    geo = new THREE.BoxGeometry(0.8, 1.6, 0.6);
+                    break;
+                case 'fermin':
+                    geo = new THREE.ConeGeometry(0.7, 1.6, 5);
+                    break;
+                case 'pantaleon':
+                    geo = new THREE.DodecahedronGeometry(0.7, 0);
+                    break;
+                case 'virgen':
+                    geo = new THREE.SphereGeometry(0.7, 12, 12);
+                    break;
+                default:
+                    geo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+            }
+            const mat = new THREE.MeshStandardMaterial({
+                color: color,
+                roughness: 0.4,
+                metalness: 0.6,
+                emissive: new THREE.Color(color).multiplyScalar(0.1),
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.scale.set(settings.scale.x, settings.scale.y, settings.scale.z);
+            mesh.position.set(settings.position.x, settings.position.y, settings.position.z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            modelGroup.add(mesh);
+
+            const ring2 = new THREE.Mesh(
+                new THREE.TorusGeometry(0.9, 0.03, 6, 18),
+                new THREE.MeshStandardMaterial({ color: 0xffaa66, emissive: 0xffaa66, emissiveIntensity: 0.2 })
+            );
+            ring2.position.set(settings.position.x, settings.position.y + 0.1, settings.position.z);
+            ring2.scale.set(settings.scale.x, settings.scale.y, settings.scale.z);
+            ring2.rotation.x = Math.PI / 2;
+            modelGroup.add(ring2);
+
+            controls.target.set(0, 0.5, 0);
+        }
+
+        function resizeRenderer() {
+            if (!is3DReady) return;
+            const container = threeContainer;
+            const width = container.clientWidth || window.innerWidth;
+            const height = container.clientHeight || window.innerHeight - 64;
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+        }
+
+        // ============================================================
+        // THREE.JS - VISOR 3D PARA LA VIRGEN EN SU SECCIÓN - OPTIMIZADO
+        // ============================================================
+        let virgenScene, virgenCamera, virgenRenderer, virgenControls;
+        let virgenModelGroup = new THREE.Group();
+        let isVirgenReady = false;
+
+        function initVirgen3D() {
+            try {
+                const container = document.getElementById('virgen-3d-container');
+                if (!container) return;
+
+                const width = container.clientWidth || 400;
+                const height = container.clientHeight || 400;
+
+                virgenScene = new THREE.Scene();
+                virgenScene.background = new THREE.Color(0x0a0a0a);
+
+                virgenCamera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
+                virgenCamera.position.set(2, 1.5, 3);
+                virgenCamera.lookAt(0, 0, 0);
+
+                virgenRenderer = new THREE.WebGLRenderer({
+                    antialias: true,
+                    alpha: false,
+                    powerPreference: "low-power"
+                });
+                virgenRenderer.setSize(width, height);
+                virgenRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+                virgenRenderer.shadowMap.enabled = true;
+                virgenRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                virgenRenderer.shadowMap.mapSize = new THREE.Vector2(512, 512);
+                virgenRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+                virgenRenderer.toneMappingExposure = 1.2;
+                container.appendChild(virgenRenderer.domElement);
+
+                virgenControls = new OrbitControls(virgenCamera, virgenRenderer.domElement);
+                virgenControls.enableDamping = true;
+                virgenControls.dampingFactor = 0.08;
+                virgenControls.minDistance = 1.5;
+                virgenControls.maxDistance = 8;
+                virgenControls.autoRotate = true;
+                virgenControls.autoRotateSpeed = 1.2;
+                virgenControls.target.set(0, 0.2, 0);
+                virgenControls.update();
+
+                const ambientVirgen = new THREE.AmbientLight(0x404060, 0.5);
+                virgenScene.add(ambientVirgen);
+
+                const dirLightVirgen = new THREE.DirectionalLight(0xffeedd, 2.0);
+                dirLightVirgen.position.set(3, 5, 4);
+                dirLightVirgen.castShadow = true;
+                dirLightVirgen.shadow.mapSize = new THREE.Vector2(512, 512);
+                virgenScene.add(dirLightVirgen);
+
+                const fillVirgen = new THREE.DirectionalLight(0x4488ff, 0.6);
+                fillVirgen.position.set(-2, 1, -3);
+                virgenScene.add(fillVirgen);
+
+                const backVirgen = new THREE.DirectionalLight(0x8866ff, 0.4);
+                backVirgen.position.set(-1, 0.5, -4);
+                virgenScene.add(backVirgen);
+
+                const pointVirgen = new THREE.PointLight(0xffaa66, 0.5, 8);
+                pointVirgen.position.set(0.5, 1.5, 2);
+                virgenScene.add(pointVirgen);
+
+                const floorGeoVirgen = new THREE.CircleGeometry(1.5, 20);
+                const floorMatVirgen = new THREE.MeshStandardMaterial({
+                    color: 0x1a1a1a,
+                    roughness: 0.7,
+                    metalness: 0.3,
+                    transparent: true,
+                    opacity: 0.6,
+                    side: THREE.DoubleSide,
+                });
+                const floorVirgen = new THREE.Mesh(floorGeoVirgen, floorMatVirgen);
+                floorVirgen.rotation.x = -Math.PI / 2;
+                floorVirgen.position.y = -0.5;
+                floorVirgen.receiveShadow = true;
+                virgenScene.add(floorVirgen);
+
+                const ringGeoVirgen = new THREE.TorusGeometry(1.2, 0.02, 12, 36);
+                const ringMatVirgen = new THREE.MeshStandardMaterial({
+                    color: 0xd4af37,
+                    roughness: 0.3,
+                    metalness: 0.7,
+                    emissive: 0xd4af37,
+                    emissiveIntensity: 0.1,
+                });
+                const ringVirgen = new THREE.Mesh(ringGeoVirgen, ringMatVirgen);
+                ringVirgen.rotation.x = -Math.PI / 2;
+                ringVirgen.position.y = -0.48;
+                virgenScene.add(ringVirgen);
+
+                virgenModelGroup.position.y = 0;
+                virgenScene.add(virgenModelGroup);
+
+                loadVirgenModel('virgen');
+
+                isVirgenReady = true;
+                resizeVirgenRenderer();
+
+                virgenRenderer.setAnimationLoop(() => {
+                    if (isVirgenReady && document.getElementById('section-virgen').classList.contains('active')) {
+                        virgenControls.update();
+                        virgenRenderer.render(virgenScene, virgenCamera);
+                    }
+                });
+            } catch (error) {
+                console.error('Error en initVirgen3D:', error);
+            }
+        }
+
+        function loadVirgenModel(key) {
+            while (virgenModelGroup.children.length) {
+                const child = virgenModelGroup.children[0];
+                virgenModelGroup.remove(child);
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+            }
+
+            const file = models[key]?.file;
+            const settings = modelSettings[key] || { scale: { x: 1, y: 1, z: 1 }, position: { x: 0, y: 0, z: 0 } };
+
+            if (file) {
+                const loader = new GLTFLoader();
+                loader.load(file, (gltf) => {
+                    const model = gltf.scene;
+                    model.scale.set(settings.scale.x, settings.scale.y, settings.scale.z);
+                    model.position.set(settings.position.x, settings.position.y, settings.position.z);
+                    virgenModelGroup.add(model);
+                    virgenControls.target.set(0, 0.2, 0);
+                }, undefined, (error) => {
+                    console.warn('Error cargando modelo de la Virgen:', error);
+                    createVirgenPlaceholder(settings);
+                });
+            } else {
+                createVirgenPlaceholder(settings);
+            }
+        }
+
+        function createVirgenPlaceholder(settings) {
+            const geo = new THREE.SphereGeometry(0.7, 12, 12);
+            const mat = new THREE.MeshStandardMaterial({
+                color: 0xd4af37,
+                roughness: 0.4,
+                metalness: 0.6,
+                emissive: 0xd4af37,
+                emissiveIntensity: 0.1,
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.scale.set(settings.scale.x, settings.scale.y, settings.scale.z);
+            mesh.position.set(settings.position.x, settings.position.y, settings.position.z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            virgenModelGroup.add(mesh);
+
+            const ring2 = new THREE.Mesh(
+                new THREE.TorusGeometry(0.9, 0.03, 6, 18),
+                new THREE.MeshStandardMaterial({ color: 0xffaa66, emissive: 0xffaa66, emissiveIntensity: 0.2 })
+            );
+            ring2.position.set(settings.position.x, settings.position.y + 0.1, settings.position.z);
+            ring2.scale.set(settings.scale.x, settings.scale.y, settings.scale.z);
+            ring2.rotation.x = Math.PI / 2;
+            virgenModelGroup.add(ring2);
+
+            virgenControls.target.set(0, 0.2, 0);
+        }
+
+        function resizeVirgenRenderer() {
+            if (!isVirgenReady) return;
+            const container = document.getElementById('virgen-3d-container');
+            if (!container) return;
+            const width = container.clientWidth || 400;
+            const height = container.clientHeight || 400;
+            virgenRenderer.setSize(width, height);
+            virgenCamera.aspect = width / height;
+            virgenCamera.updateProjectionMatrix();
+        }
+
+        // ============================================================
+        // INICIALIZACIÓN Y EVENTOS (TODO DENTRO DE window.load)
+        // ============================================================
+        window.addEventListener('load', () => {
+            console.log('Inicializando experiencia...');
+
+            // FALLBACK: ocultar loader después de 3 segundos (máximo)
+            const timeoutId = setTimeout(() => {
+                console.warn('Loader ocultado por timeout de seguridad');
+                loader.classList.add('hidden');
+            }, 3000);
+
+            try {
+                // Inicializar Three.js
+                initThree();
+                initVirgen3D();
+
+                // Inicializar galería y eventos de imágenes
+                initGalleryAndImages();
+
+                // Eventos de navegación
+                navLinks.forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const id = link.dataset.section;
+                        if (id) navigateTo(id);
+                    });
+                });
+
+                // Botón "Comenzar recorrido" - AHORA VA DIRECTAMENTE A HISTORIA
+                startBtn.addEventListener('click', () => {
+                    console.log('Botón "Comenzar recorrido" clickeado - Navegando a Historia');
+                    navigateTo('section-historia');
+                });
+
+                // Logo (volver al inicio)
+                logoLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    navigateTo('section-inicio');
+                });
+
+                // Botón fullscreen
+                fullscreenBtn.addEventListener('click', () => {
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen?.() || document.documentElement.webkitRequestFullscreen?.();
+                    } else {
+                        document.exitFullscreen?.() || document.webkitExitFullscreen?.();
+                    }
+                });
+
+                // Cambio de tema
+                themeToggleTop.addEventListener('click', toggleTheme);
+
+                // Ctrl+1..9 para navegar
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
+                        e.preventDefault();
+                        const idx = parseInt(e.key, 10) - 1;
+                        if (idx < navLinks.length) {
+                            const id = navLinks[idx].dataset.section;
+                            if (id) navigateTo(id);
+                        }
+                    }
+                });
+
+                // Prevenir arrastre de imágenes
+                document.querySelectorAll('img').forEach(img => {
+                    img.addEventListener('dragstart', (e) => e.preventDefault());
+                });
+
+                // Botones de modelos 3D
+                modelBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const key = btn.dataset.model;
+                        if (key) loadModel(key);
+                    });
+                });
+
+                // Reset cámara 3D
+                resetCamBtn.addEventListener('click', () => {
+                    if (controls) {
+                        camera.position.set(4, 3, 6);
+                        controls.target.set(0, 0.5, 0);
+                        controls.update();
+                    }
+                });
+
+                // Ocultar loader y navegar a la última sección
+                clearTimeout(timeoutId);
+                setTimeout(() => {
+                    loader.classList.add('hidden');
+                    const last = localStorage.getItem('huanuni-last-section');
+                    if (last && last !== 'section-inicio') {
+                        navigateTo(last);
+                    } else {
+                        breadcrumb.textContent = 'Inicio';
+                        navLinks.forEach(a => a.classList.toggle('active', a.dataset.section === 'section-inicio'));
+                    }
+                    if (currentSection === 'section-historia') animateTimeline();
+                    if (currentSection === 'section-mineria') animateStats();
+                }, 800);
+
+            } catch (error) {
+                console.error('Error en la inicialización:', error);
+                setTimeout(() => {
+                    loader.classList.add('hidden');
+                }, 500);
+            }
+        });
+
+        // ============================================================
+        // AYUDA PARA REEMPLAZAR MODELOS (consola)
+        // ============================================================
+        console.log('=== MUSEO DIGITAL HUANUNI ===');
+        console.log('Para añadir modelos 3D, asigna la ruta en el objeto "models"');
+        console.log('Para cambiar tamaño y posición, edita "modelSettings"');
+
+        // Redimensionar al cambiar tamaño de ventana
+        window.addEventListener('resize', () => {
+            resizeRenderer();
+            resizeVirgenRenderer();
+        });
+
+        console.log('Experiencia Huanuni cargada correctamente.');
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Plaza Principal Fermín López · Huanuni, Oruro</title>
+<meta name="description" content="Experiencia 3D inmersiva de la Plaza Principal Fermín López de Huanuni, Oruro, Bolivia.">
+<meta name="theme-color" content="#0d2a66">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cielo:#0d2a66; --cobre:#a8492f; --ocre:#d9a51c; --oro:#cda227; --oro-light:#e8c873;
+  --hueso:#f4eedb; --linea: rgba(244,238,219,.16);
+  --font-display:'Fraunces', serif; --font-body:'Manrope', sans-serif; --font-eyebrow:'Oswald', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#04091c; color:var(--hueso); font-family:var(--font-body); -webkit-font-smoothing:antialiased;}
+button{font-family:var(--font-body); cursor:pointer;}
+:focus-visible{outline:3px solid var(--oro); outline-offset:3px;}
+
+#app-canvas{position:fixed; inset:0; display:block; width:100%; height:100%; touch-action:none;}
+#vignette{position:fixed; inset:0; z-index:20; pointer-events:none; background:radial-gradient(ellipse 120% 90% at 50% 45%, transparent 45%, rgba(2,5,16,.55) 100%);}
+
+/* ===================== LOADER REAL ===================== */
+#loader{
+  position:fixed; inset:0; z-index:500; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:20px; background:radial-gradient(ellipse 90% 70% at 50% 30%, #123166 0%, #04091c 75%);
+  transition:opacity .9s ease, visibility .9s ease;
+}
+#loader.hidden{opacity:0; visibility:hidden; pointer-events:none;}
+#loader .lo-eyebrow{font-family:var(--font-eyebrow); font-size:11px; letter-spacing:.3em; text-transform:uppercase; color:var(--ocre);}
+#loader .lo-title{font-family:var(--font-display); font-size:clamp(22px,5vw,32px); letter-spacing:.02em; color:#fff8e9; text-align:center;}
+#loader .lo-sub{font-family:var(--font-eyebrow); font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:#9fb0d1;}
+#loader .lo-bar{width:min(300px,66vw); height:4px; border-radius:4px; background:rgba(255,255,255,.12); overflow:hidden; margin-top:6px;}
+#loader .lo-fill{width:0%; height:100%; background:linear-gradient(90deg, var(--oro), var(--oro-light)); border-radius:4px; transition:width .12s ease;}
+#loader .lo-pct{font-family:var(--font-eyebrow); font-size:18px; letter-spacing:.05em; color:#fff;}
+#loader .lo-err{margin-top:8px; font-size:12.5px; color:#f3a; max-width:300px; text-align:center; display:none;}
+
+/* ===================== BIENVENIDA ===================== */
+#welcome{
+  position:fixed; inset:0; z-index:60; display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+  padding:0 24px 8vh; text-align:center; opacity:0; transition:opacity 1.1s ease;
+  pointer-events:none;
+}
+#welcome.show{opacity:1; pointer-events:auto;}
+#welcome .w-eyebrow{
+  font-family:var(--font-eyebrow); font-size:12px; letter-spacing:.32em; text-transform:uppercase; color:var(--oro-light);
+  text-shadow:0 2px 18px rgba(0,0,0,.75), 0 1px 3px rgba(0,0,0,.9);
+  background:rgba(4,9,28,.28); backdrop-filter:blur(6px); display:inline-block; padding:6px 16px; border-radius:20px; border:1px solid rgba(255,255,255,.08);
+}
+#welcome h1{
+  font-family:var(--font-display); font-weight:600; font-size:clamp(34px,7vw,64px); line-height:1.02; margin:14px 0 6px;
+  color:#fff8e9; text-shadow:0 6px 34px rgba(0,0,0,.7), 0 2px 6px rgba(0,0,0,.95);
+}
+#welcome .w-sub{
+  font-size:clamp(13px,2vw,15.5px); color:#eef2ff; max-width:420px; line-height:1.6; margin:8px auto 30px;
+  text-shadow:0 2px 14px rgba(0,0,0,.7), 0 1px 3px rgba(0,0,0,.9);
+}
+#explorar-btn{
+  position:relative; overflow:hidden; border:1px solid rgba(232,200,115,.6); background:rgba(9,15,36,.5);
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); color:#fff8e9; text-shadow:0 1px 2px rgba(0,0,0,.5);
+  font-family:var(--font-eyebrow); font-size:13px; letter-spacing:.2em; text-transform:uppercase;
+  padding:17px 42px; border-radius:40px; transition:transform .25s ease, background .25s ease, box-shadow .25s ease;
+  box-shadow:0 10px 40px -10px rgba(232,200,115,.3), inset 0 1px 0 rgba(255,255,255,.08);
+  display:inline-flex; align-items:center; gap:10px;
+}
+#explorar-btn .arrow{ transition:transform .25s ease; }
+#explorar-btn:hover{transform:translateY(-2px); background:rgba(232,200,115,.18); box-shadow:0 16px 50px -12px rgba(232,200,115,.5), inset 0 1px 0 rgba(255,255,255,.12);}
+#explorar-btn:hover .arrow{ transform:translateX(4px); }
+#explorar-btn:active{transform:translateY(0) scale(.98);}
+#explorar-btn .sheen{
+  position:absolute; top:0; left:-60%; width:40%; height:100%;
+  background:linear-gradient(120deg, transparent, rgba(255,255,255,.35), transparent);
+  transform:skewX(-20deg); animation:sheen 3.4s ease-in-out infinite;
+}
+@keyframes sheen{ 0%,60%{left:-60%;} 100%{left:130%;} }
+
+#skip-hint{
+  position:fixed; top:20px; right:22px; z-index:61; font-family:var(--font-eyebrow); font-size:10.5px;
+  letter-spacing:.15em; text-transform:uppercase; color:#b9c6e8; opacity:0; transition:opacity .8s ease .4s;
+  background:rgba(8,16,40,.4); border:1px solid var(--linea); padding:8px 14px; border-radius:20px;
+}
+#skip-hint.show{opacity:.85;}
+
+/* ===================== TRANSICIÓN DE SALIDA ===================== */
+#exit-veil{
+  position:fixed; inset:0; z-index:900; background:#04091c; opacity:0; pointer-events:none;
+  transition:opacity 1s ease;
+}
+#exit-veil.show{opacity:1;}
+
+/* ===================== FALLBACK ===================== */
+#webgl-fallback, #accessible-view{ position:fixed; inset:0; z-index:600; background:#f4eedb; color:#1c1710; overflow-y:auto; display:none; }
+#webgl-fallback.show, #accessible-view.show{display:block;}
+#webgl-fallback .wf-inner{max-width:480px; margin:16vh auto; text-align:center; padding:0 24px;}
+#webgl-fallback h2{font-family:var(--font-display); font-size:26px; margin-bottom:12px;}
+#webgl-fallback a.btn, #webgl-fallback button.btn{
+  display:inline-block; margin-top:16px; padding:12px 26px; background:#0d2a66; color:#fff; border-radius:24px;
+  text-decoration:none; font-family:var(--font-eyebrow); font-size:12px; letter-spacing:.08em; text-transform:uppercase; border:none;
+}
+#accessible-view .av-inner{max-width:640px; margin:0 auto; padding:80px 24px 100px;}
+#accessible-view h2{font-family:var(--font-display); font-size:32px; color:#0d2a66;}
+#accessible-view p{line-height:1.7;}
+#accessible-view a.btn{display:inline-block; margin-top:20px; padding:12px 26px; background:#0d2a66; color:#fff; border-radius:24px; text-decoration:none; font-family:var(--font-eyebrow); font-size:12px; letter-spacing:.08em; text-transform:uppercase;}
+
+@media (prefers-reduced-motion: reduce){ *{animation-duration:.001ms !important; transition-duration:.001ms !important;} }
+</style>
+</head>
+<body>
+
+<canvas id="app-canvas" aria-hidden="true"></canvas>
+<div id="vignette" aria-hidden="true"></div>
+
+<div id="loader" role="status" aria-live="polite">
+  <div class="lo-eyebrow">Huanuni · Oruro · Bolivia</div>
+  <div class="lo-title">Plaza Fermín López</div>
+  <div class="lo-sub" id="lo-sub">Preparando experiencia 3D</div>
+  <div class="lo-bar"><div class="lo-fill" id="lo-fill"></div></div>
+  <div class="lo-pct" id="lo-pct">0%</div>
+  <div class="lo-err" id="lo-err">No se pudo cargar <code>proyecto_plaza.glb</code>. Verifica que el archivo esté en la misma carpeta que este HTML.</div>
+</div>
+
+<main id="welcome">
+  <div class="w-eyebrow">Experiencia digital · Huanuni, Oruro, Bolivia</div>
+  <h1>Plaza Fermín López</h1>
+  <p class="w-sub">Explora la historia, los monumentos y el patrimonio minero de Huanuni en un recorrido 3D.</p>
+  <button id="explorar-btn" aria-label="Explorar la plaza en 3D">
+    <span class="sheen" aria-hidden="true"></span>
+    Explorar la plaza
+    <span class="arrow" aria-hidden="true">→</span>
+  </button>
+</main>
+
+<div id="skip-hint">Toca para omitir</div>
+<div id="exit-veil" aria-hidden="true"></div>
+
+<div id="webgl-fallback">
+  <div class="wf-inner">
+    <h2>Esta experiencia requiere WebGL</h2>
+    <p>Tu dispositivo o navegador no puede ejecutar el recorrido 3D de la Plaza Fermín López.</p>
+    <button class="btn" id="wf-accesible">Ver versión accesible</button>
+  </div>
+</div>
+
+<div id="accessible-view">
+  <div class="av-inner">
+    <h2>Plaza Principal Fermín López</h2>
+    <p>Huanuni, Provincia Pantaleón Dalence, Departamento de Oruro, Bolivia. Versión de solo texto de la experiencia 3D, sin depender de WebGL.</p>
+    <p>Esta plaza reúne cinco monumentos: un casco minero monumental con la Virgen del Rosario, y los bustos de Simón Bolívar, Fermín López Téllez, Pantaleón Dalence Jiménez y Juan Lechín Oquendo.</p>
+    <a class="btn" href="entorno3d.html">Continuar al recorrido 3D</a>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+import { Sky } from "three/addons/objects/Sky.js";
+
+/* ---------- WebGL check ---------- */
+function hasWebGL(){
+  try{
+    const c = document.createElement('canvas');
+    return !!(window.WebGLRenderingContext && (c.getContext('webgl') || c.getContext('experimental-webgl')));
+  }catch(e){ return false; }
+}
+if(!hasWebGL()){
+  document.getElementById('loader').classList.add('hidden');
+  document.getElementById('webgl-fallback').classList.add('show');
+  document.getElementById('wf-accesible').addEventListener('click', ()=> document.getElementById('accessible-view').classList.add('show'));
+  throw new Error('WebGL no disponible');
+}
+
+/* ---------- Escena ---------- */
+const canvas = document.getElementById('app-canvas');
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xbfe3ff, 30, 130);
+
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth/window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, powerPreference:'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+
+const sky = new Sky();
+sky.scale.setScalar(2000);
+scene.add(sky);
+const su = sky.material.uniforms;
+su.turbidity.value = 2.6; su.rayleigh.value = 1.9; su.mieCoefficient.value = 0.0028; su.mieDirectionalG.value = 0.86;
+const sunPos = new THREE.Vector3().setFromSphericalCoords(1, THREE.MathUtils.degToRad(90-32), THREE.MathUtils.degToRad(118));
+su.sunPosition.value.copy(sunPos);
+
+/* Disco solar sutil — un punto de luz visible en el cielo, sin sobreexponer la escena */
+const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+  color:0xfff3d6, transparent:true, opacity:0.9, depthWrite:false, blending:THREE.AdditiveBlending
+}));
+sunSprite.scale.set(38,38,1);
+sunSprite.position.copy(sunPos).multiplyScalar(560);
+scene.add(sunSprite);
+
+/* Nubes: sprites suaves, pocas, bien distribuidas — el mismo lenguaje visual que entorno3d.html */
+const cloudGroup = new THREE.Group(); scene.add(cloudGroup);
+const cloudTex = (()=>{
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64,64,0,64,64,64);
+  g.addColorStop(0,'rgba(255,255,255,0.95)'); g.addColorStop(0.5,'rgba(255,255,255,0.38)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,128,128);
+  return new THREE.CanvasTexture(c);
+})();
+for(let i=0;i<10;i++){
+  const puff = new THREE.Group();
+  const blobs = 3 + Math.floor(Math.random()*3);
+  for(let b=0;b<blobs;b++){
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map:cloudTex, transparent:true, opacity:0.48, depthWrite:false }));
+    const sc = 22 + Math.random()*16;
+    s.scale.set(sc, sc*0.5, 1);
+    s.position.set((Math.random()-0.5)*30, (Math.random()-0.5)*4, (Math.random()-0.5)*10);
+    puff.add(s);
+  }
+  const ang = (i/10)*Math.PI*2 + Math.random()*0.3;
+  const rad = 110 + Math.random()*70;
+  puff.position.set(Math.cos(ang)*rad, 46+Math.random()*24, Math.sin(ang)*rad);
+  puff.userData.speed = 0.3 + Math.random()*0.3;
+  cloudGroup.add(puff);
+}
+
+scene.add(new THREE.HemisphereLight(0xcfe6ff, 0xb98a5a, 1.1));
+const sun = new THREE.DirectionalLight(0xfff0d2, 3.35);
+sun.position.copy(sunPos).multiplyScalar(80);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024,1024);
+Object.assign(sun.shadow.camera, {near:1, far:120, left:-20, right:20, top:20, bottom:-20});
+sun.shadow.bias = -0.0003;
+scene.add(sun);
+scene.add(new THREE.AmbientLight(0xffffff, 0.32));
+
+/* Suelo de respaldo mientras carga */
+const floor = new THREE.Mesh(new THREE.CircleGeometry(50,48), new THREE.MeshStandardMaterial({color:0xb7b4ad, roughness:.95}));
+floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+
+/* ---------- Carga GLB (loader real, sin tiempos falsos) ---------- */
+const loFill = document.getElementById('lo-fill');
+const loPct = document.getElementById('lo-pct');
+const loSub = document.getElementById('lo-sub');
+const loaderEl = document.getElementById('loader');
+const loErr = document.getElementById('lo-err');
+
+const draco = new DRACOLoader();
+draco.setDecoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/draco/');
+const gltfLoader = new GLTFLoader();
+gltfLoader.setDRACOLoader(draco);
+
+let plazaBoxCenter = new THREE.Vector3();
+let plazaBoxSize = new THREE.Vector3();
+
+gltfLoader.load(
+  './proyecto_plaza.glb',
+  (gltf)=>{
+    const root = gltf.scene;
+    root.traverse(o=>{
+      if(o.isMesh){
+        o.castShadow = true; o.receiveShadow = true;
+        /* Realza materiales apagados sin alterar su identidad: sube ligeramente
+           la reflectividad ambiental de materiales estándar muy planos. */
+        const m = o.material;
+        if(m && m.isMeshStandardMaterial){
+          if(m.roughness === undefined || m.roughness > 0.96) m.roughness = 0.9;
+          m.envMapIntensity = 1.15;
+        }
+      }
+    });
+    scene.add(root);
+    floor.visible = false;
+
+    const box = new THREE.Box3().setFromObject(root);
+    box.getCenter(plazaBoxCenter);
+    box.getSize(plazaBoxSize);
+    console.log('✓ proyecto_plaza.glb cargado — encuadrando la plaza completa para la bienvenida');
+
+    buildDust(box);
+    onLoadComplete();
+  },
+  (xhr)=>{
+    if(xhr.total){
+      const pct = Math.min(100, Math.round((xhr.loaded/xhr.total)*100));
+      loFill.style.width = pct+'%'; loPct.textContent = pct+'%';
+    }
+  },
+  (err)=>{
+    console.error('Error cargando proyecto_plaza.glb', err);
+    loSub.textContent = 'No se pudo cargar el modelo';
+    loErr.style.display = 'block';
+  }
+);
+
+function onLoadComplete(){
+  setTimeout(()=>{
+    loaderEl.classList.add('hidden');
+    document.getElementById('welcome').classList.add('show');
+    document.getElementById('skip-hint').classList.add('show');
+    startWelcomeCamera();
+  }, 200);
+}
+
+/* ---------- Partículas de polvo/ambiente — refuerzan la sensación 3D ---------- */
+let dustPoints = null;
+function buildDust(box){
+  const count = 260;
+  const positions = new Float32Array(count*3);
+  const size = new THREE.Vector3(); box.getSize(size);
+  const center = new THREE.Vector3(); box.getCenter(center);
+  const radius = Math.max(size.x, size.z) * 0.6;
+  for(let i=0;i<count;i++){
+    const a = Math.random()*Math.PI*2;
+    const r = Math.random()*radius;
+    positions[i*3] = center.x + Math.cos(a)*r;
+    positions[i*3+1] = center.y + Math.random()*size.y*0.9 + 0.3;
+    positions[i*3+2] = center.z + Math.sin(a)*r;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({ color:0xfff2d0, size:0.045, transparent:true, opacity:0.35, depthWrite:false, blending:THREE.AdditiveBlending });
+  dustPoints = new THREE.Points(geo, mat);
+  scene.add(dustPoints);
+}
+
+/* ---------- Cámara de bienvenida: sobrevuelo orbital cinematográfico de TODA la plaza ---------- */
+const clock = new THREE.Clock();
+let orbitAngle = 0.35;
+let camRadius = 0, camHeight = 0, lookHeight = 0;
+
+function startWelcomeCamera(){
+  const footprint = Math.max(plazaBoxSize.x, plazaBoxSize.z) || 24;
+  camRadius = footprint * 0.72;
+  camHeight = plazaBoxCenter.y + plazaBoxSize.y * 0.85 + footprint * 0.16;
+  lookHeight = plazaBoxCenter.y + plazaBoxSize.y * 0.12;
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  if(document.hidden) return;
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.getElapsedTime();
+  if(camRadius){
+    orbitAngle += dt * 0.05; // rotación muy lenta, tipo dron
+    const breathing = 1 + Math.sin(t*0.12) * 0.05;   // leve acercamiento/alejamiento
+    const bob = Math.sin(t*0.09) * plazaBoxSize.y * 0.05; // leve variación de altura
+    const r = camRadius * breathing;
+    const x = plazaBoxCenter.x + Math.sin(orbitAngle) * r;
+    const z = plazaBoxCenter.z + Math.cos(orbitAngle) * r;
+    camera.position.set(x, camHeight + bob, z);
+    camera.lookAt(plazaBoxCenter.x, lookHeight, plazaBoxCenter.z);
+  } else {
+    camera.position.set(Math.sin(orbitAngle)*10, 6, Math.cos(orbitAngle)*10 + 6);
+    camera.lookAt(0,2,0);
+  }
+  if(dustPoints) dustPoints.rotation.y += dt*0.015;
+  cloudGroup.children.forEach(puff=>{ puff.position.x += puff.userData.speed*dt; if(puff.position.x>220) puff.position.x=-220; });
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', ()=>{
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ---------- Botón Explorar: sonido sutil + transición cinematográfica ---------- */
+let audioCtx = null;
+function playClick(){
+  try{
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(360, audioCtx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(680, audioCtx.currentTime+0.28);
+    g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.05, audioCtx.currentTime+0.04);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+0.32);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime+0.34);
+  }catch(e){}
+}
+
+let navigating = false;
+document.getElementById('explorar-btn').addEventListener('click', ()=>{
+  if(navigating) return;
+  navigating = true;
+  playClick();
+  document.getElementById('welcome').classList.remove('show');
+  document.getElementById('exit-veil').classList.add('show');
+  setTimeout(()=>{ window.location.href = 'entorno3d.html'; }, 950);
+});
+</script>
+</body>
+</html>

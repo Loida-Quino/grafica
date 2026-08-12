@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Plaza Fermín López · Recorrido 3D</title>
+<meta name="theme-color" content="#0d2a66">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cielo:#0d2a66; --cobre:#a8492f; --ocre:#d9a51c; --oro:#cda227; --oro-light:#e8c873;
+  --hueso:#f4eedb; --piedra:#1d2330; --piedra-2:#262f40; --linea: rgba(244,238,219,.14);
+  --font-display:'Fraunces', serif; --font-body:'Manrope', sans-serif; --font-eyebrow:'Oswald', sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#04091c; color:var(--hueso); font-family:var(--font-body); -webkit-font-smoothing:antialiased;}
+button{font-family:var(--font-body); cursor:pointer;}
+:focus-visible{outline:3px solid var(--oro); outline-offset:2px;}
+#app-canvas{position:fixed; inset:0; display:block; width:100%; height:100%; touch-action:none;}
+
+/* ===================== LOADER ===================== */
+#loader{position:fixed; inset:0; z-index:500; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; background:radial-gradient(ellipse 90% 70% at 50% 30%, #123166 0%, #04091c 75%); transition:opacity .8s ease, visibility .8s ease;}
+#loader.hidden{opacity:0; visibility:hidden; pointer-events:none;}
+#loader .lo-title{font-family:var(--font-display); font-size:clamp(22px,5vw,30px); color:#fff8e9;}
+#loader .lo-sub{font-family:var(--font-eyebrow); font-size:11.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--ocre);}
+#loader .lo-bar{width:min(300px,66vw); height:4px; border-radius:4px; background:rgba(255,255,255,.12); overflow:hidden;}
+#loader .lo-fill{width:0%; height:100%; background:linear-gradient(90deg, var(--oro), var(--oro-light));}
+#loader .lo-pct{font-family:var(--font-eyebrow); font-size:17px;}
+#loader .lo-err{margin-top:6px; font-size:12.5px; color:#f3a; max-width:300px; text-align:center; display:none;}
+
+/* ===================== HUD ===================== */
+#hud{position:fixed; top:0; left:0; right:0; z-index:80; display:flex; align-items:center; justify-content:space-between; padding:14px 20px; opacity:0; transform:translateY(-14px); transition:opacity .7s ease, transform .7s ease; pointer-events:none;}
+#hud.show{opacity:1; transform:translateY(0); pointer-events:auto;}
+#hud .brand{display:flex; align-items:center; gap:9px; font-family:var(--font-eyebrow); font-size:12.5px; letter-spacing:.09em; text-transform:uppercase; font-weight:600; color:#fff8e9; background:rgba(13,20,45,.5); backdrop-filter:blur(14px); border:1px solid var(--linea); padding:9px 15px; border-radius:30px;}
+#hud .brand .mark{width:20px; height:20px; border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--oro-light), var(--oro) 65%, #8a6b22); flex:none;}
+#hud-links{display:flex; gap:6px; background:rgba(13,20,45,.5); backdrop-filter:blur(14px); border:1px solid var(--linea); padding:6px; border-radius:30px;}
+#hud-links button{border:none; background:none; color:#e7ecfb; font-family:var(--font-eyebrow); font-size:11px; letter-spacing:.07em; text-transform:uppercase; padding:8px 13px; border-radius:22px; transition:background .2s ease, color .2s ease; white-space:nowrap;}
+#hud-links button:hover, #hud-links button.active{background:rgba(232,200,115,.18); color:var(--oro-light);}
+#hud-tools{display:flex; gap:7px;}
+#hud-tools button{width:36px; height:36px; border-radius:50%; border:1px solid var(--linea); background:rgba(13,20,45,.5); backdrop-filter:blur(14px); color:#fff8e9; font-size:14px; display:flex; align-items:center; justify-content:center; transition:background .2s ease, transform .2s ease;}
+#hud-tools button:hover{background:rgba(232,200,115,.2); transform:translateY(-1px);}
+#hud-mobile-toggle{display:none;}
+@media (max-width:860px){
+  #hud-links{display:none;}
+  #hud-mobile-toggle{display:flex; width:36px; height:36px; border-radius:50%; border:1px solid var(--linea); background:rgba(13,20,45,.55); color:#fff8e9; font-size:16px; align-items:center; justify-content:center;}
+}
+#mobile-drawer{position:fixed; inset:0 0 0 auto; width:min(78vw,300px); height:100%; z-index:130; background:rgba(8,16,40,.97); backdrop-filter:blur(16px); transform:translateX(100%); transition:transform .35s ease; padding:80px 26px 26px; display:flex; flex-direction:column; gap:2px;}
+#mobile-drawer.open{transform:translateX(0);}
+#mobile-drawer button{text-align:left; border:none; background:none; color:#e7ecfb; font-family:var(--font-eyebrow); font-size:12.5px; letter-spacing:.07em; text-transform:uppercase; padding:14px 4px; border-bottom:1px solid rgba(255,255,255,.08);}
+#drawer-close{position:absolute; top:20px; right:20px; width:34px; height:34px; border-radius:50%; border:1px solid var(--linea); background:rgba(255,255,255,.06); color:#fff; font-size:15px;}
+
+/* ===================== INTRO SKIP ===================== */
+#intro-hint{position:fixed; left:50%; bottom:32px; transform:translateX(-50%); z-index:75; font-family:var(--font-eyebrow); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:#cfe0ff; background:rgba(8,16,40,.5); border:1px solid var(--linea); padding:9px 17px; border-radius:22px; opacity:0; transition:opacity .5s ease; pointer-events:none;}
+#intro-hint.show{opacity:1;}
+
+/* ===================== WALK INSTRUCCIONES (primera vez) ===================== */
+#walk-tip{position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:95; background:rgba(8,16,40,.78); backdrop-filter:blur(14px); border:1px solid var(--linea); border-radius:16px; padding:22px 28px; text-align:center; opacity:0; visibility:hidden; transition:opacity .5s ease, visibility .5s ease;}
+#walk-tip.show{opacity:1; visibility:visible;}
+#walk-tip h3{font-family:var(--font-display); font-size:19px; margin:0 0 10px; color:#fff;}
+#walk-tip p{font-family:var(--font-eyebrow); font-size:11.5px; letter-spacing:.05em; color:#cfe0ff; line-height:2; margin:0;}
+#walk-tip kbd{background:rgba(255,255,255,.14); border-radius:5px; padding:2px 8px; margin:0 2px;}
+#orbit-tip{position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:95; background:rgba(8,16,40,.78); backdrop-filter:blur(14px); border:1px solid var(--linea); border-radius:16px; padding:22px 28px; text-align:center; opacity:0; visibility:hidden; transition:opacity .5s ease, visibility .5s ease;}
+#orbit-tip.show{opacity:1; visibility:visible;}
+#orbit-tip h3{font-family:var(--font-display); font-size:19px; margin:0 0 10px; color:#fff;}
+#orbit-tip p{font-family:var(--font-eyebrow); font-size:11.5px; letter-spacing:.05em; color:#cfe0ff; line-height:1.9; margin:0;}
+#orbit-tip kbd{background:rgba(255,255,255,.14); border-radius:5px; padding:2px 8px; margin:0 2px;}
+
+/* ===================== CROSSHAIR (modo caminar) ===================== */
+#crosshair{position:fixed; top:50%; left:50%; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%; background:rgba(255,255,255,.85); z-index:45; display:none; pointer-events:none;}
+
+/* ===================== HOTSPOTS ===================== */
+.hotspot{position:absolute; top:0; left:0; transform:translate(-50%,-100%); z-index:40; display:flex; flex-direction:column; align-items:center; pointer-events:auto; cursor:pointer; transition:opacity .3s ease;}
+.hotspot .hs-dot{width:15px; height:15px; border-radius:50%; background:var(--oro-light); box-shadow:0 0 0 0 rgba(232,200,115,.6); animation:hsPulse 2.2s ease-in-out infinite; border:2px solid #fff8e9;}
+@keyframes hsPulse{0%{box-shadow:0 0 0 0 rgba(232,200,115,.55);} 70%{box-shadow:0 0 0 13px rgba(232,200,115,0);} 100%{box-shadow:0 0 0 0 rgba(232,200,115,0);}}
+.hotspot .hs-line{width:1px; height:20px; background:linear-gradient(180deg, var(--oro-light), transparent);}
+.hotspot .hs-label{font-family:var(--font-eyebrow); font-size:10px; letter-spacing:.07em; text-transform:uppercase; background:rgba(8,16,40,.72); color:#fff8e9; padding:5px 10px; border-radius:14px; white-space:nowrap; margin-bottom:4px; border:1px solid var(--linea);}
+
+/* ===================== CONTROLES MÓVILES (joystick) ===================== */
+#mobile-controls{position:fixed; inset:0; z-index:50; display:none; pointer-events:none;}
+#mobile-controls.active{display:block;}
+#joystick-zone{position:fixed; left:26px; bottom:26px; width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.18); pointer-events:auto; touch-action:none;}
+#joystick-thumb{position:absolute; top:50%; left:50%; width:52px; height:52px; margin:-26px 0 0 -26px; border-radius:50%; background:rgba(232,200,115,.55); border:1px solid rgba(255,255,255,.5);}
+#look-zone{position:fixed; inset:0 0 0 40%; pointer-events:auto; touch-action:none;}
+#mobile-exit-walk{position:fixed; right:20px; bottom:26px; z-index:52; pointer-events:auto; background:rgba(13,20,45,.6); border:1px solid var(--linea); color:#fff8e9; font-family:var(--font-eyebrow); font-size:11px; letter-spacing:.07em; text-transform:uppercase; padding:12px 18px; border-radius:24px;}
+#mobile-interact{position:fixed; right:20px; bottom:96px; z-index:52; pointer-events:auto; width:64px; height:64px; border-radius:50%; background:rgba(232,200,115,.28); border:1px solid rgba(232,200,115,.6); color:#fff8e9; font-size:11px; font-family:var(--font-eyebrow); text-transform:uppercase;}
+@media(min-width:861px){ #mobile-controls{display:none !important;} }
+
+/* ===================== PANEL DE INSPECCIÓN ===================== */
+#panel-overlay{position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; background:rgba(4,9,28,.6); backdrop-filter:blur(6px); opacity:0; visibility:hidden; transition:opacity .35s ease, visibility .35s ease; padding:20px;}
+#panel-overlay.open{opacity:1; visibility:visible;}
+#panel{position:relative; width:min(880px,96vw); max-height:88vh; overflow-y:auto; background:linear-gradient(160deg, var(--piedra-2), var(--piedra)); border-radius:12px; padding:30px; box-shadow:0 30px 70px -14px rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.06); display:grid; grid-template-columns:1fr 1fr; gap:28px; transform:translateY(16px) scale(.97); transition:transform .35s ease;}
+#panel-overlay.open #panel{transform:translateY(0) scale(1);}
+@media (max-width:760px){ #panel{grid-template-columns:1fr; max-height:92vh;} }
+#panel .p-eyebrow{font-family:var(--font-eyebrow); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--ocre);}
+#panel h3{font-family:var(--font-display); font-size:clamp(22px,3.4vw,28px); margin:8px 0 12px; color:#fff;}
+#panel p{line-height:1.62; font-size:14.5px; color:#d8dfef; margin:0 0 11px;}
+#panel .p-quote{margin:14px 0; padding:13px 15px; border-left:3px solid var(--ocre); background:rgba(255,255,255,.04); font-family:var(--font-display); font-style:italic; font-size:15px; color:#fbeecb;}
+#panel .p-quote cite{display:block; margin-top:5px; font-style:normal; font-family:var(--font-eyebrow); font-size:10px; letter-spacing:.07em; text-transform:uppercase; color:#9aa6bd;}
+#panel-close{position:absolute; top:14px; right:14px; width:34px; height:34px; border-radius:50%; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.06); color:#fff; font-size:15px; z-index:2;}
+#viewer-col{position:relative; border-radius:10px; overflow:hidden; background:radial-gradient(ellipse at 50% 30%, #23304a, #0d1220 78%); min-height:260px; display:flex; align-items:center; justify-content:center;}
+#viewer-canvas{width:100%; height:100%; display:block; touch-action:none;}
+#viewer-pause{position:absolute; bottom:10px; right:10px; width:34px; height:34px; border-radius:50%; border:1px solid rgba(255,255,255,.2); background:rgba(8,16,40,.55); color:#fff; font-size:13px;}
+#viewer-hint{position:absolute; top:10px; left:10px; font-family:var(--font-eyebrow); font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:#cfe0ff; background:rgba(8,16,40,.5); padding:5px 10px; border-radius:12px;}
+
+/* ===================== HISTORIA OVERLAY ===================== */
+#historia-overlay{position:fixed; inset:0; z-index:150; background:rgba(5,10,26,.9); backdrop-filter:blur(10px); opacity:0; visibility:hidden; transition:opacity .4s ease, visibility .4s ease; overflow-y:auto;}
+#historia-overlay.open{opacity:1; visibility:visible;}
+#historia-overlay .h-inner{max-width:980px; margin:0 auto; padding:90px 24px 100px;}
+#historia-overlay h2.h-title{font-family:var(--font-display); font-size:clamp(28px,5vw,44px); color:var(--oro-light); margin:0 0 6px;}
+#historia-overlay .h-lede{color:#c9d3ea; font-size:15.5px; max-width:640px; line-height:1.6; margin-bottom:34px;}
+#historia-close{position:fixed; top:18px; right:20px; z-index:160; width:40px; height:40px; border-radius:50%; border:1px solid var(--linea); background:rgba(255,255,255,.08); color:#fff; font-size:16px;}
+.h-section{margin-bottom:52px;}
+.h-section h4{font-family:var(--font-eyebrow); font-size:11.5px; letter-spacing:.13em; text-transform:uppercase; color:var(--ocre); margin-bottom:15px;}
+.h-timeline{position:relative; padding-left:24px;}
+.h-timeline::before{content:''; position:absolute; left:6px; top:0; bottom:0; width:2px; background:rgba(232,200,115,.28);}
+.h-t-item{position:relative; margin-bottom:20px; opacity:0; transform:translateX(14px); transition:opacity .5s ease, transform .5s ease;}
+.h-t-item.visible{opacity:1; transform:translateX(0);}
+.h-t-item::before{content:''; position:absolute; left:-24px; top:5px; width:10px; height:10px; border-radius:50%; background:var(--oro-light); box-shadow:0 0 0 3px rgba(232,200,115,.25);}
+.h-t-item .y{font-family:var(--font-display); font-weight:700; color:var(--oro-light); font-size:16px;}
+.h-t-item .d{color:#c9d3ea; font-size:14px; margin-top:2px; line-height:1.5;}
+.h-stats{display:grid; grid-template-columns:repeat(3,1fr); gap:13px;}
+@media (max-width:640px){.h-stats{grid-template-columns:1fr;}}
+.h-stat{text-align:center; background:rgba(255,255,255,.04); border:1px solid var(--linea); border-radius:8px; padding:16px 10px;}
+.h-stat .num{font-family:var(--font-display); font-size:28px; font-weight:700; color:var(--oro-light);}
+.h-stat .lab{font-family:var(--font-eyebrow); font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:#9fb0d1; margin-top:4px;}
+.h-cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:13px;}
+.h-card{background:rgba(255,255,255,.04); border:1px solid var(--linea); border-radius:8px; padding:15px 17px;}
+.h-card h5{font-family:var(--font-display); color:#fff; font-size:15px; margin:0 0 6px;}
+.h-card p{color:#c2ccdf; font-size:13px; line-height:1.5; margin:0;}
+.h-ficha-grid{display:grid; grid-template-columns:1fr 1fr; gap:24px;}
+@media (max-width:700px){.h-ficha-grid{grid-template-columns:1fr;}}
+.h-flist{list-style:none; margin:0 0 14px; padding:0; font-size:13px;}
+.h-flist li{display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px dashed rgba(255,255,255,.1); color:#dbe3f5;}
+.h-flist li b{color:#fff; font-weight:600;}
+.h-flist li span{text-align:right; color:#9fb0d1; font-size:11.5px;}
+.h-gallery{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px;}
+.h-gallery figure{margin:0; aspect-ratio:4/3; border-radius:6px; overflow:hidden; background:#222b44; cursor:zoom-in;}
+.h-gallery img{width:100%; height:100%; object-fit:cover; transition:transform .4s ease;}
+.h-gallery figure:hover img{transform:scale(1.08);}
+
+/* ===================== LIGHTBOX ===================== */
+#lightbox{position:fixed; inset:0; z-index:400; background:rgba(3,6,18,.94); display:flex; align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:opacity .3s ease; padding:30px;}
+#lightbox.open{opacity:1; visibility:visible;}
+#lightbox img{max-width:min(880px,90vw); max-height:80vh; border-radius:6px;}
+#lightbox button{position:absolute; top:22px; right:22px; width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.08); color:#fff; font-size:17px;}
+
+/* ===================== FALLBACK / ACCESIBLE ===================== */
+#webgl-fallback, #accessible-view{position:fixed; inset:0; z-index:600; background:#f4eedb; color:#1c1710; overflow-y:auto; display:none;}
+#webgl-fallback.show, #accessible-view.show{display:block;}
+#webgl-fallback .wf-inner{max-width:480px; margin:16vh auto; text-align:center; padding:0 24px;}
+#webgl-fallback h2{font-family:var(--font-display); font-size:26px; margin-bottom:12px;}
+#webgl-fallback button.btn, #accessible-close{display:inline-block; margin-top:16px; padding:12px 26px; background:#0d2a66; color:#fff; border-radius:24px; border:none; font-family:var(--font-eyebrow); font-size:12px; letter-spacing:.08em; text-transform:uppercase;}
+#accessible-view .av-inner{max-width:760px; margin:0 auto; padding:80px 24px 100px;}
+#accessible-view h2{font-family:var(--font-display); font-size:32px; color:#0d2a66;}
+#accessible-view h3{font-family:var(--font-display); font-size:21px; margin:30px 0 8px; color:#a8492f;}
+#accessible-view p{line-height:1.7; margin-bottom:9px;}
+#accessible-close{position:fixed; top:18px; right:20px; background:#15120f;}
+
+/* ===================== POLISH: microinteracciones y contraste ===================== */
+#hud-tools button:active, #hud-links button:active, #mode-btn:active{ transform:scale(.93); }
+#hud-tools button, #hud-links button{ transition:background .2s ease, color .2s ease, transform .15s ease, box-shadow .2s ease; }
+.hotspot .hs-label{ box-shadow:0 4px 14px rgba(0,0,0,.35); }
+.hotspot:hover .hs-dot{ transform:scale(1.15); }
+#panel h3, #historia-overlay h2.h-title{ text-shadow:0 2px 10px rgba(0,0,0,.35); }
+#viewer-pause:hover, #panel-close:hover, #historia-close:hover, #lb-close:hover{ background:rgba(232,200,115,.22); }
+#panel-overlay, #historia-overlay{ transition:opacity .4s ease, visibility .4s ease; }
+
+@media (prefers-reduced-motion: reduce){ *{animation-duration:.001ms !important; transition-duration:.001ms !important;} }
+.sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<canvas id="app-canvas" aria-label="Escena 3D interactiva de la Plaza Fermín López"></canvas>
+<div id="crosshair" aria-hidden="true"></div>
+
+<div id="loader" role="status" aria-live="polite">
+  <div class="lo-title">Plaza Fermín López</div>
+  <div class="lo-sub">Cargando experiencia 3D</div>
+  <div class="lo-bar"><div class="lo-fill" id="lo-fill"></div></div>
+  <div class="lo-pct" id="lo-pct">0%</div>
+  <div class="lo-err" id="lo-err">No se pudo cargar <code>proyecto_plaza.glb</code>. Verifica que el archivo esté en la misma carpeta.</div>
+</div>
+
+<header id="hud">
+  <div class="brand"><span class="mark" aria-hidden="true"></span> Plaza Fermín López</div>
+  <nav id="hud-links" aria-label="Navegación del recorrido">
+    <button data-action="historia" aria-label="Abrir historia y datos de la plaza">Historia</button>
+    <button data-action="mode" id="mode-btn" aria-label="Cambiar entre orbitar y caminar">◉ Orbitar</button>
+  </nav>
+  <div id="hud-tools">
+    <button id="btn-recenter" aria-label="Recentrar cámara en la plaza" title="Recentrar vista">⌖</button>
+    <button id="btn-audio" aria-label="Activar sonido" title="Sonido">🔈</button>
+    <button id="btn-daynight" aria-label="Cambiar a modo noche" title="Día / Noche">☀</button>
+    <button id="btn-fullscreen" aria-label="Pantalla completa" title="Pantalla completa">⛶</button>
+    <button id="hud-mobile-toggle" aria-label="Abrir menú" aria-expanded="false">☰</button>
+  </div>
+</header>
+
+<div id="mode-announcer" class="sr-only" role="status" aria-live="polite"></div>
+
+<nav id="mobile-drawer" aria-label="Menú móvil">
+  <button id="drawer-close" aria-label="Cerrar menú">✕</button>
+  <button data-action="historia">Historia</button>
+  <button data-action="mode" id="mode-btn-mobile">Caminar</button>
+  <button data-action="recenter">Recentrar vista</button>
+  <button data-action="audio">Audio</button>
+  <button data-action="daynight">Día / Noche</button>
+  <button data-action="fullscreen">Pantalla completa</button>
+  <button data-action="accesible">Versión de solo texto</button>
+</nav>
+
+<div id="intro-hint">Toca para omitir la introducción</div>
+
+<div id="walk-tip">
+  <h3>Modo caminar</h3>
+  <p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> moverte · Mouse mirar · <kbd>Shift</kbd> correr · <kbd>ESC</kbd> liberar cursor</p>
+</div>
+
+<div id="orbit-tip">
+  <h3>Modo órbita</h3>
+  <p>Arrastra para rotar · Scroll para acercar<br><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> para desplazarte · <kbd>Shift</kbd> más rápido</p>
+</div>
+
+<div id="hotspot-layer" aria-hidden="true"></div>
+
+<div id="mobile-controls">
+  <div id="joystick-zone" aria-hidden="true"><div id="joystick-thumb"></div></div>
+  <div id="look-zone" aria-hidden="true"></div>
+  <button id="mobile-interact" aria-label="Inspeccionar monumento">Ver</button>
+  <button id="mobile-exit-walk" aria-label="Salir del modo caminar">◉ Orbitar</button>
+</div>
+
+<div id="panel-overlay" role="dialog" aria-modal="true" aria-labelledby="panel-title">
+  <div id="panel">
+    <button id="panel-close" aria-label="Cerrar inspección">✕</button>
+    <div id="info-col">
+      <span class="p-eyebrow" id="panel-eyebrow"></span>
+      <h3 id="panel-title"></h3>
+      <div id="panel-body"></div>
+    </div>
+    <div id="viewer-col">
+      <span id="viewer-hint">Arrastra para rotar · Scroll para zoom</span>
+      <canvas id="viewer-canvas"></canvas>
+      <button id="viewer-pause" aria-label="Pausar rotación">⏸</button>
+    </div>
+  </div>
+</div>
+
+<div id="historia-overlay" role="dialog" aria-modal="true" aria-label="Historia de la plaza">
+  <button id="historia-close" aria-label="Cerrar historia">✕</button>
+  <div class="h-inner">
+    <span class="p-eyebrow" style="color:var(--ocre)">Huanuni · Provincia Pantaleón Dalence · Oruro</span>
+    <h2 class="h-title">La historia detrás de la plaza</h2>
+    <p class="h-lede">Un recorrido por el tiempo, la minería y la memoria de Huanuni.</p>
+
+    <section class="h-section"><h4>Línea de tiempo</h4><div class="h-timeline" id="h-timeline"></div></section>
+
+    <section class="h-section">
+      <h4>Huanuni en cifras</h4>
+      <div class="h-stats" id="h-stats">
+        <div class="h-stat"><div class="num" data-count="120">0</div><div class="lab">Años de historia minera</div></div>
+        <div class="h-stat"><div class="num" data-count="4500">0</div><div class="lab">Trabajadores (aprox.)</div></div>
+        <div class="h-stat"><div class="num" data-count="70">0</div><div class="lab">% de producción de estaño (Bolivia)</div></div>
+      </div>
+    </section>
+
+    <section class="h-section"><h4>Datos curiosos</h4><div class="h-cards" id="h-curiosos"></div></section>
+
+    <section class="h-section">
+      <h4>Ficha técnica — placa conmemorativa</h4>
+      <p style="color:#c9d3ea; font-size:13px; margin-bottom:14px;">Gobierno Autónomo Municipal de Huanuni, proyecto «Construcción Plaza Principal Fermín López», gestión 2017.</p>
+      <ul class="h-flist"><li><b>Felipe Martínez Mamani</b><span>Alcalde Municipal de Huanuni</span></li></ul>
+      <div class="h-ficha-grid">
+        <div>
+          <h5 style="font-family:var(--font-eyebrow); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ocre); margin-bottom:8px;">Concejo municipal</h5>
+          <ul class="h-flist">
+            <li><b>Gabriel Vilcaez López</b><span>Presidente del Concejo</span></li>
+            <li><b>Elisa Misericordia Soria</b><span>Vicepresidenta</span></li>
+            <li><b>Carlos Tito Choque</b><span>Secretario</span></li>
+            <li><b>Teodoro Gutiérrez Martínez</b><span>Concejal</span></li>
+            <li><b>Walter Cerrogrande</b><span>Concejal</span></li>
+            <li><b>Emilio Choque Valdez</b><span>Concejal</span></li>
+            <li><b>Ing. César Lazarte Titichoca</b><span>Secretario técnico</span></li>
+            <li><b>Arq. Ernesto Callapa Rodríguez</b><span>Supervisor de obra</span></li>
+          </ul>
+        </div>
+        <div>
+          <h5 style="font-family:var(--font-eyebrow); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ocre); margin-bottom:8px;">Comité impulsor / constructora</h5>
+          <ul class="h-flist">
+            <li><b>Roberto Chávez S.</b><span>Presidente Junta Vecinal</span></li>
+            <li><b>Carlos Candia F.</b><span>Vicepresidente de zona</span></li>
+            <li><b>Alejandrina Jiménez de Romero</b><span>Secretaria de hacienda</span></li>
+            <li><b>Ing. Gonzalo Becerra Herrera</b><span>Dirección de obra</span></li>
+            <li><b>Arq. Víctor Roque Núñez</b><span>Diseño de obra</span></li>
+            <li><b>COCONBE BECERRA</b><span>Empresa constructora — 2017</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="h-section"><h4>Fotografías</h4><div class="h-gallery" id="h-gallery"></div></section>
+  </div>
+</div>
+
+<div id="lightbox"><button id="lb-close" aria-label="Cerrar imagen">✕</button><img id="lb-img" src="" alt=""></div>
+
+<div id="webgl-fallback">
+  <div class="wf-inner">
+    <h2>Esta experiencia requiere WebGL</h2>
+    <p>Tu dispositivo o navegador no puede ejecutar el recorrido 3D de la Plaza Fermín López.</p>
+    <button class="btn" id="wf-accesible">Ver versión accesible</button>
+  </div>
+</div>
+
+<div id="accessible-view">
+  <button id="accessible-close">Cerrar versión de texto</button>
+  <div class="av-inner">
+    <h2>Plaza Principal Fermín López</h2>
+    <p>Huanuni, Provincia Pantaleón Dalence, Departamento de Oruro, Bolivia. Versión de solo texto de la experiencia 3D.</p>
+    <h3>Casco minero con la Virgen del Rosario</h3>
+    <p>El elemento central de la plaza es un gran casco minero monumental que simboliza el trabajo, el esfuerzo y la identidad de Huanuni. En su parte superior destaca la imagen de la Virgen del Rosario, expresión de la fe que acompaña a los trabajadores en cada jornada bajo tierra.</p>
+    <h3>Simón Bolívar (1783–1830)</h3>
+    <p>Encabezó campañas militares que contribuyeron a la liberación de Venezuela, Colombia, Ecuador, Perú y el Alto Perú. En 1825 el nuevo Estado adoptó el nombre de Bolivia en su honor.</p>
+    <h3>Fermín López Téllez (1863–1934)</h3>
+    <p>Destacado dirigente minero de Huanuni, reconocido por su compromiso con la defensa de los derechos de los trabajadores y su liderazgo sindical.</p>
+    <h3>Pantaleón Dalence Jiménez (1815–1892)</h3>
+    <p>Jurista y estadista boliviano, Presidente de la Corte Suprema de Justicia y Ministro de Hacienda, reconocido como el Padre de la Justicia Boliviana.</p>
+    <h3>Juan Lechín Oquendo</h3>
+    <p>Durante más de cuatro décadas fue la voz más influyente del sindicalismo minero boliviano, como Secretario Ejecutivo de la COB y la FSTMB. El monumento fue develado por dirigentes de la FSTMB.</p>
+    <h3>Huanuni en cifras</h3>
+    <p>120 años de historia minera · aproximadamente 4.500 trabajadores · 70% de la producción de estaño de Bolivia.</p>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { Sky } from "three/addons/objects/Sky.js";
+
+/* ============================================================ 0. WEBGL CHECK ============================================================ */
+function hasWebGL(){ try{ const c=document.createElement('canvas'); return !!(window.WebGLRenderingContext && (c.getContext('webgl')||c.getContext('experimental-webgl'))); }catch(e){ return false; } }
+if(!hasWebGL()){
+  document.getElementById('loader').classList.add('hidden');
+  document.getElementById('webgl-fallback').classList.add('show');
+  document.getElementById('wf-accesible').addEventListener('click', ()=> document.getElementById('accessible-view').classList.add('show'));
+  document.getElementById('accessible-close').addEventListener('click', ()=> document.getElementById('accessible-view').classList.remove('show'));
+  throw new Error('WebGL no disponible');
+}
+
+/* ============================================================ 1. ESTADO GLOBAL ============================================================ */
+const MODE = { INTRO:'intro', ORBIT:'orbit', WALK:'walk', FLYING:'flying', INSPECT:'inspect' };
+let mode = MODE.INTRO;
+let dayMode = true;
+let audioOn = false;
+let firstWalk = true;
+let firstOrbitTip = true;
+
+/* ============================================================ 2. ESCENA / CÁMARA / RENDERER ============================================================ */
+const canvas = document.getElementById('app-canvas');
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x9fd3eb, 55, 165);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 2000);
+camera.position.set(0, 30, 46);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, powerPreference:'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+
+/* Cielo */
+const sky = new Sky();
+sky.scale.setScalar(2000);
+scene.add(sky);
+const skyU = sky.material.uniforms;
+skyU.turbidity.value = 3.2; skyU.rayleigh.value = 1.6; skyU.mieCoefficient.value = 0.0045; skyU.mieDirectionalG.value = 0.82;
+const sunPos = new THREE.Vector3();
+function setSun(elevationDeg, azimuthDeg){
+  sunPos.setFromSphericalCoords(1, THREE.MathUtils.degToRad(90-elevationDeg), THREE.MathUtils.degToRad(azimuthDeg));
+  skyU.sunPosition.value.copy(sunPos);
+  sun.position.copy(sunPos).multiplyScalar(120);
+}
+
+/* Nubes: sprites suaves, pocas, bien distribuidas — cielo diurno cinematográfico */
+const cloudGroup = new THREE.Group(); scene.add(cloudGroup);
+const cloudTex = (()=>{
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64,64,0,64,64,64);
+  g.addColorStop(0,'rgba(255,255,255,0.95)'); g.addColorStop(0.5,'rgba(255,255,255,0.38)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,128,128);
+  return new THREE.CanvasTexture(c);
+})();
+for(let i=0;i<14;i++){
+  const puff = new THREE.Group();
+  const blobs = 3 + Math.floor(Math.random()*3);
+  for(let b=0;b<blobs;b++){
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map:cloudTex, transparent:true, opacity:0.5, depthWrite:false }));
+    const sc = 24 + Math.random()*18;
+    s.scale.set(sc, sc*0.52, 1);
+    s.position.set((Math.random()-0.5)*32, (Math.random()-0.5)*4, (Math.random()-0.5)*10);
+    puff.add(s);
+  }
+  const ang = (i/14)*Math.PI*2 + Math.random()*0.3;
+  const rad = 130 + Math.random()*90;
+  puff.position.set(Math.cos(ang)*rad, 58+Math.random()*28, Math.sin(ang)*rad);
+  puff.userData.speed = 0.35 + Math.random()*0.35;
+  cloudGroup.add(puff);
+}
+
+/* Luces día */
+const hemi = new THREE.HemisphereLight(0xbfe3ff, 0xb98a5a, 0.9); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff3d6, 3.0);
+sun.castShadow = true; sun.shadow.mapSize.set(1024,1024);
+Object.assign(sun.shadow.camera, {near:1, far:220, left:-45, right:45, top:45, bottom:-45});
+sun.shadow.bias = -0.0004;
+scene.add(sun);
+const ambient = new THREE.AmbientLight(0xffffff, 0.25); scene.add(ambient);
+setSun(48,135);
+
+/* Luces nocturnas (focos estratégicos, pocas, no cientos) */
+const nightLights = new THREE.Group(); scene.add(nightLights);
+const moonLight = new THREE.DirectionalLight(0x9fb6ff, 0);
+scene.add(moonLight);
+
+/* Luna visible: disco + halo suave, siempre en el punto opuesto al sol de noche */
+const moonGroup = new THREE.Group();
+const moonPos = new THREE.Vector3().setFromSphericalCoords(1, THREE.MathUtils.degToRad(90-42), THREE.MathUtils.degToRad(-55)).multiplyScalar(650);
+moonGroup.position.copy(moonPos);
+const moonDisc = new THREE.Mesh(
+  new THREE.SphereGeometry(9, 24, 24),
+  new THREE.MeshBasicMaterial({ color:0xeef3ff, transparent:true, opacity:0 })
+);
+moonGroup.add(moonDisc);
+const moonHalo = new THREE.Sprite(new THREE.SpriteMaterial({
+  color:0xbcd0ff, transparent:true, opacity:0, depthWrite:false, blending:THREE.AdditiveBlending
+}));
+moonHalo.scale.set(46,46,1);
+moonGroup.add(moonHalo);
+scene.add(moonGroup);
+moonLight.position.copy(moonPos);
+moonLight.target.position.set(0,0,0);
+scene.add(moonLight.target);
+
+/* Campo de estrellas discreto — pocas, elegantes, solo visibles de noche */
+const starCount = 340;
+const starPositions = new Float32Array(starCount*3);
+for(let i=0;i<starCount;i++){
+  const r = 900;
+  const theta = Math.random()*Math.PI*2;
+  const phi = Math.acos(THREE.MathUtils.lerp(0.05, 0.92, Math.random())); // evita el horizonte bajo
+  starPositions[i*3] = r*Math.sin(phi)*Math.cos(theta);
+  starPositions[i*3+1] = Math.abs(r*Math.cos(phi));
+  starPositions[i*3+2] = r*Math.sin(phi)*Math.sin(theta);
+}
+const starGeo = new THREE.BufferGeometry();
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions,3));
+const starMat = new THREE.PointsMaterial({ color:0xffffff, size:1.6, sizeAttenuation:false, transparent:true, opacity:0, depthWrite:false });
+const stars = new THREE.Points(starGeo, starMat);
+scene.add(stars);
+
+/* Suelo de respaldo */
+const floor = new THREE.Mesh(new THREE.CircleGeometry(60,48), new THREE.MeshStandardMaterial({color:0xb7b4ad, roughness:.95}));
+floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+
+/* ============================================================ 3. ORBIT CONTROLS ============================================================ */
+const orbit = new OrbitControls(camera, renderer.domElement);
+orbit.enabled = false;
+orbit.enableDamping = true; orbit.dampingFactor = 0.12;
+orbit.rotateSpeed = 1.55;
+orbit.zoomSpeed = 1.35;
+orbit.panSpeed = 1.2;
+orbit.minDistance = 4; orbit.maxDistance = 80;
+orbit.maxPolarAngle = Math.PI/2.08;
+orbit.target.set(0,2,0);
+
+/* Desplazamiento libre con WASD mientras se orbita: traslada cámara + objetivo juntos */
+const ORBIT_LIMIT = 30;
+const ORBIT_SPEED = 11, ORBIT_RUN = 20;
+const _ofwd = new THREE.Vector3(), _oright = new THREE.Vector3(), _oup = new THREE.Vector3(0,1,0);
+function updateOrbitPan(dt){
+  if(mode!==MODE.ORBIT) return;
+  _ofwd.subVectors(orbit.target, camera.position); _ofwd.y = 0;
+  if(_ofwd.lengthSq() < 1e-6) _ofwd.set(0,0,-1); else _ofwd.normalize();
+  _oright.crossVectors(_ofwd, _oup).normalize();
+
+  let ix=0, iz=0;
+  if(keys['KeyW']){ ix+=_ofwd.x; iz+=_ofwd.z; }
+  if(keys['KeyS']){ ix-=_ofwd.x; iz-=_ofwd.z; }
+  if(keys['KeyA']){ ix-=_oright.x; iz-=_oright.z; }
+  if(keys['KeyD']){ ix+=_oright.x; iz+=_oright.z; }
+  if(ix===0 && iz===0) return;
+
+  const len = Math.hypot(ix,iz);
+  ix/=len; iz/=len;
+  const speed = (keys['ShiftLeft']||keys['ShiftRight']) ? ORBIT_RUN : ORBIT_SPEED;
+  let nx = orbit.target.x + ix*speed*dt;
+  let nz = orbit.target.z + iz*speed*dt;
+  nx = THREE.MathUtils.clamp(nx, -ORBIT_LIMIT, ORBIT_LIMIT);
+  nz = THREE.MathUtils.clamp(nz, -ORBIT_LIMIT, ORBIT_LIMIT);
+  const dx = nx - orbit.target.x, dz = nz - orbit.target.z;
+  orbit.target.x = nx; orbit.target.z = nz;
+  camera.position.x += dx; camera.position.z += dz;
+}
+
+/* ============================================================ 4. CARGA ÚNICA DEL GLB ============================================================ */
+const loFill = document.getElementById('lo-fill'), loPct = document.getElementById('lo-pct');
+const loaderEl = document.getElementById('loader'), loErr = document.getElementById('lo-err');
+
+const draco = new DRACOLoader();
+draco.setDecoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/draco/');
+const gltfLoader = new GLTFLoader();
+gltfLoader.setDRACOLoader(draco);
+
+const MONUMENT_NAMES = ['estatua_fermin_lopez','estatua_juan_lechin','estatua_pantaleon_dalence','estatua_simon_bolivar','monumento_casco_minero'];
+const interactables = {}; // name -> {object, title}
+const colliders = []; // {center:Vector3, radius}
+let plazaRoot = null;
+
+gltfLoader.load('./proyecto_plaza.glb', (gltf)=>{
+  plazaRoot = gltf.scene;
+  plazaRoot.traverse(o=>{
+    if(o.isMesh){
+      o.castShadow=true; o.receiveShadow=true;
+      const m = o.material;
+      if(m && m.isMeshStandardMaterial){
+        if(m.roughness===undefined || m.roughness>0.96) m.roughness = 0.9;
+        m.envMapIntensity = 1.15;
+      }
+    }
+  });
+  scene.add(plazaRoot);
+  floor.visible = false;
+
+  MONUMENT_NAMES.forEach(name=>{
+    const obj = plazaRoot.getObjectByName(name);
+    if(obj){
+      interactables[name] = { object:obj, title: monumentInfo[name]?.title || name };
+      const box = new THREE.Box3().setFromObject(obj);
+      const size = new THREE.Vector3(); box.getSize(size);
+      const center = new THREE.Vector3(); box.getCenter(center);
+      colliders.push({ center, radius: Math.max(size.x,size.z)*0.45 + 0.45 });
+      console.log('✓ '+name+' encontrada');
+      if(dayMode===false){} // noop
+    } else {
+      console.warn('WARNING: no se encontró el nodo "'+name+'" en el GLB.');
+    }
+  });
+
+  buildHotspots();
+  buildNightLights();
+  onLoadComplete();
+}, (xhr)=>{
+  if(xhr.total){ const pct = Math.min(100, Math.round((xhr.loaded/xhr.total)*100)); loFill.style.width=pct+'%'; loPct.textContent=pct+'%'; }
+}, (err)=>{ console.error('Error cargando proyecto_plaza.glb', err); loErr.style.display='block'; });
+
+function onLoadComplete(){ setTimeout(()=>{ loaderEl.classList.add('hidden'); startIntro(); }, 200); }
+
+/* ============================================================ 5. FOCOS NOCTURNOS ESTRATÉGICOS ============================================================ */
+function buildNightLights(){
+  // Un foco por monumento (museo nocturno)
+  Object.entries(interactables).forEach(([name, {object}])=>{
+    const box = new THREE.Box3().setFromObject(object);
+    const center = new THREE.Vector3(); box.getCenter(center);
+    const size = new THREE.Vector3(); box.getSize(size);
+    const spot = new THREE.SpotLight(0xffe3ad, 0, 22, Math.PI/6, 0.5, 1.4);
+    spot.position.set(center.x + size.x*0.9 + 1.5, center.y + size.y + 2.5, center.z + size.z*0.9 + 1.5);
+    spot.target.position.copy(center);
+    spot.castShadow = false;
+    nightLights.add(spot, spot.target);
+
+    // Protagonismo extra para el casco minero: foco frontal + lateral suave,
+    // para que sea el punto visual más atractivo de la plaza de noche.
+    if(name==='monumento_casco_minero'){
+      const front = new THREE.SpotLight(0xffedc4, 0, 26, Math.PI/5, 0.45, 1.3);
+      front.position.set(center.x, center.y + size.y*0.55, center.z + size.z*1.1 + 3);
+      front.target.position.copy(center);
+      front.castShadow = false;
+      nightLights.add(front, front.target);
+
+      const rim = new THREE.PointLight(0xa9c8ff, 0, 14, 2);
+      rim.position.set(center.x - size.x*0.8, center.y + size.y*0.7, center.z - size.z*0.8);
+      nightLights.add(rim);
+    }
+  });
+  // Luces cálidas discretas de camino (pocas, no cientos)
+  const pathPositions = [ [10,0,10], [-10,0,10], [10,0,-10], [-10,0,-10] ];
+  pathPositions.forEach(p=>{
+    const pl = new THREE.PointLight(0xffb066, 0, 9, 2);
+    pl.position.set(p[0], 1.6, p[2]);
+    nightLights.add(pl);
+  });
+}
+
+/* ============================================================ 6. CONTENIDO HISTÓRICO POR MONUMENTO ============================================================ */
+const monumentInfo = {
+  monumento_casco_minero:{ eyebrow:'El casco minero con la Virgen del Rosario', title:'Casco Minero',
+    body:`<p>El elemento central de la plaza es un gran casco minero monumental que simboliza el trabajo, el esfuerzo y la identidad de Huanuni. Su estructura protege el espacio público como una metáfora del resguardo que la minería ha brindado históricamente a la comunidad.</p>
+    <p>En su parte superior destaca la imagen de la Virgen del Rosario, expresión de la fe que acompaña a los trabajadores en cada jornada bajo tierra, integrando los colores y símbolos característicos del distrito minero.</p>` },
+  estatua_simon_bolivar:{ eyebrow:'Libertador de América · 1783–1830', title:'Simón Bolívar',
+    body:`<p>Simón Bolívar fue uno de los principales líderes de la independencia sudamericana. Nacido en Caracas, encabezó campañas militares que contribuyeron a la liberación de Venezuela, Colombia, Ecuador, Perú y el Alto Perú del dominio español.</p>
+    <p>En 1825, tras la independencia del Alto Perú, el nuevo Estado adoptó el nombre de Bolivia en su honor. El busto lo representa con uniforme militar, charreteras y adornos de laurel.</p>` },
+  estatua_fermin_lopez:{ eyebrow:'Pionero de la minería de Huanuni · 1863–1934', title:'Fermín López Téllez',
+    body:`<p>Fermín López Téllez fue un destacado dirigente minero de Huanuni, reconocido por su compromiso con la defensa de los derechos de los trabajadores y su liderazgo dentro del movimiento sindical.</p>
+    <p>El busto instalado en la plaza que lleva su nombre constituye un homenaje a su legado y al aporte de los trabajadores mineros en la historia del municipio.</p>` },
+  estatua_pantaleon_dalence:{ eyebrow:'Padre de la Justicia Boliviana · 1815–1892', title:'Pantaleón Dalence Jiménez',
+    body:`<p>Jurista y estadista boliviano nacido en Oruro. Se desempeñó como Presidente de la Corte Suprema de Justicia, Ministro de Hacienda y Prefecto de varios departamentos, reconocido como el Padre de la Justicia Boliviana.</p>
+    <p>La provincia cuya capital es Huanuni lleva su nombre en reconocimiento a su aporte a la historia nacional.</p>` },
+  estatua_juan_lechin:{ eyebrow:'Líder sindical · Secretario ejecutivo de la COB y la FSTMB', title:'Juan Lechín Oquendo',
+    body:`<p>Durante más de cuatro décadas fue la voz más influyente del sindicalismo minero boliviano, como Secretario Ejecutivo de la Central Obrera Boliviana (COB) y de la Federación Sindical de Trabajadores Mineros de Bolivia (FSTMB).</p>
+    <div class="p-quote">"El fusil es la única garantía de libertad y la revolución permanente."<cite>Juan Lechín Oquendo — placa conmemorativa, Huanuni, diciembre de 2003</cite></div>
+    <p>El monumento fue develado en Huanuni por dirigentes de la FSTMB: Hebert Choque T. (secretario general), Nelson Guevara A. (secretario permanente) y Leonidas Granadino V. (secretario de organización).</p>` }
+};
+
+/* ===== CONFIGURACIÓN DE MONUMENTOS (EXCLUSIVA del VISOR de inspección) =====
+   No afecta la posición/escala/rotación del monumento dentro de la plaza.
+   Editar aquí para ajustar cada pieza individualmente. */
+const INSPECTION_CONFIG = {
+  estatua_fermin_lopez:      { position:{x:10,y:0,z:5}, rotation:{x:0,y:0,z:0}, scaleMultiplier:7,    cameraDistanceMultiplier:1,    cameraHeightOffset:0 },
+  estatua_juan_lechin:       { position:{x:0,y:0,z:0}, rotation:{x:0,y:0,z:0}, scaleMultiplier:1,    cameraDistanceMultiplier:1,    cameraHeightOffset:0 },
+  estatua_pantaleon_dalence: { position:{x:0,y:0,z:0}, rotation:{x:0,y:0,z:0}, scaleMultiplier:1,    cameraDistanceMultiplier:1,    cameraHeightOffset:0 },
+  estatua_simon_bolivar:     { position:{x:10,y:0,z:5}, rotation:{x:0,y:0,z:0}, scaleMultiplier:7,    cameraDistanceMultiplier:1,    cameraHeightOffset:0 },
+  monumento_casco_minero:    { position:{x:0,y:0,z:0}, rotation:{x:0,y:0,z:0}, scaleMultiplier:0.85, cameraDistanceMultiplier:1.15, cameraHeightOffset:0.1 }
+};
+
+/* ============================================================ 7. INTRO CINEMATOGRÁFICA ============================================================ */
+let introClock = new THREE.Clock(false);
+const INTRO_DURATION = 3.4;
+let introCurve=null, introLookCurve=null;
+function easeInOutCubic(t){ return t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+function buildIntroCurve(){
+  introCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0,34,50), new THREE.Vector3(22,18,20), new THREE.Vector3(12,8,-9),
+    new THREE.Vector3(-14,6,-12), new THREE.Vector3(-8,6,10), new THREE.Vector3(0,8,18)
+  ]);
+  introLookCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0,2,0), new THREE.Vector3(2,2,0), new THREE.Vector3(0,2,-2),
+    new THREE.Vector3(-2,2,0), new THREE.Vector3(0,2,2), new THREE.Vector3(0,2,0)
+  ]);
+}
+function startIntro(){
+  buildIntroCurve(); mode = MODE.INTRO; orbit.enabled=false; introClock.start();
+  document.getElementById('intro-hint').classList.add('show');
+}
+function updateIntro(){
+  const t = Math.min(introClock.getElapsedTime()/INTRO_DURATION, 1);
+  const et = easeInOutCubic(t);
+  camera.position.copy(introCurve.getPointAt(et));
+  camera.lookAt(introLookCurve.getPointAt(et));
+  if(t>=1) finishIntro();
+}
+function finishIntro(){
+  mode = MODE.ORBIT; orbit.enabled = true; orbit.target.set(0,2,0);
+  camera.position.set(0,9,20); orbit.update();
+  document.getElementById('hud').classList.add('show');
+  document.getElementById('intro-hint').classList.remove('show');
+  if(firstOrbitTip){
+    firstOrbitTip = false;
+    const tip = document.getElementById('orbit-tip');
+    tip.classList.add('show');
+    setTimeout(()=> tip.classList.remove('show'), 4200);
+  }
+}
+canvas.addEventListener('pointerdown', ()=>{ if(mode===MODE.INTRO) finishIntro(); });
+
+/* ============================================================ 8. DÍA / NOCHE ============================================================ */
+const btnDayNight = document.getElementById('btn-daynight');
+function setDayNight(isDay){
+  dayMode = isDay;
+  btnDayNight.textContent = isDay ? '☀' : '☾';
+  btnDayNight.setAttribute('aria-label', isDay ? 'Cambiar a modo noche' : 'Cambiar a modo día');
+  const targets = {
+    turbidity: isDay?2.6:0.42, rayleigh: isDay?1.9:0.28, elevation: isDay?48:-6,
+    hemi: isDay?1.1:0.24, sunI: isDay?3.35:0.06, ambI: isDay?0.32:0.16, exposure: isDay?1.15:0.78,
+    spot: isDay?0:1.8, pathL: isDay?0:0.95, moon: isDay?0:0.4, moonOpacity: isDay?0:0.95,
+    haloOpacity: isDay?0:0.5, starOpacity: isDay?0:0.85, sunSpriteOpacity: isDay?0.9:0, cloudOpacity: isDay?0.5:0.12
+  };
+  const start = { turbidity:skyU.turbidity.value, rayleigh:skyU.rayleigh.value, hemi:hemi.intensity, sunI:sun.intensity,
+    ambI:ambient.intensity, exposure:renderer.toneMappingExposure, starOpacity:starMat.opacity,
+    moonOpacity:moonDisc.material.opacity, haloOpacity:moonHalo.material.opacity,
+    cloudOpacity: cloudGroup.children[0]?.children[0]?.material.opacity || 0.5 };
+  const t0 = performance.now(), dur=2600; // transición cinematográfica ~2.6s
+  const spots = nightLights.children.filter(c=>c.isSpotLight);
+  const points = nightLights.children.filter(c=>c.isPointLight);
+  const startSpot = spots[0]?.intensity||0, startPath = points[0]?.intensity||0, startMoon = moonLight.intensity;
+  function step(){
+    const p = Math.min((performance.now()-t0)/dur, 1);
+    const ep = easeInOutCubic(p);
+    skyU.turbidity.value = THREE.MathUtils.lerp(start.turbidity, targets.turbidity, ep);
+    skyU.rayleigh.value = THREE.MathUtils.lerp(start.rayleigh, targets.rayleigh, ep);
+    hemi.intensity = THREE.MathUtils.lerp(start.hemi, targets.hemi, ep);
+    sun.intensity = THREE.MathUtils.lerp(start.sunI, targets.sunI, ep);
+    ambient.intensity = THREE.MathUtils.lerp(start.ambI, targets.ambI, ep);
+    renderer.toneMappingExposure = THREE.MathUtils.lerp(start.exposure, targets.exposure, ep);
+    moonLight.intensity = THREE.MathUtils.lerp(startMoon, targets.moon, ep);
+    starMat.opacity = THREE.MathUtils.lerp(start.starOpacity, targets.starOpacity, ep);
+    moonDisc.material.opacity = THREE.MathUtils.lerp(start.moonOpacity, targets.moonOpacity, ep);
+    moonHalo.material.opacity = THREE.MathUtils.lerp(start.haloOpacity, targets.haloOpacity, ep);
+    const co = THREE.MathUtils.lerp(start.cloudOpacity, targets.cloudOpacity, ep);
+    cloudGroup.children.forEach(puff=> puff.children.forEach(s=> s.material.opacity = co));
+    setSun(THREE.MathUtils.lerp(isDay?20:48, targets.elevation, ep), 135);
+    spots.forEach(s=> s.intensity = THREE.MathUtils.lerp(startSpot, targets.spot, ep));
+    points.forEach(pt=> pt.intensity = THREE.MathUtils.lerp(startPath, targets.pathL, ep));
+    if(p<1) requestAnimationFrame(step);
+  }
+  step();
+}
+btnDayNight.addEventListener('click', ()=> setDayNight(!dayMode));
+
+/* ============================================================ 9. RAYCASTING ROBUSTO — findInteractiveRoot ============================================================ */
+function findInteractiveRoot(object){
+  let o = object;
+  while(o){
+    if(o.name && interactables[o.name]) return o.name;
+    o = o.parent;
+  }
+  return null;
+}
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let hovered = null;
+const emissiveCache = new Map();
+function applyHover(mesh, on){
+  if(!mesh || !mesh.material || !mesh.material.emissive) return;
+  if(on){
+    if(!emissiveCache.has(mesh)) emissiveCache.set(mesh, mesh.material.emissive.getHex());
+    mesh.material.emissive.setHex(0x5a4415); mesh.material.emissiveIntensity = 0.9;
+  } else if(emissiveCache.has(mesh)){
+    mesh.material.emissive.setHex(emissiveCache.get(mesh)); mesh.material.emissiveIntensity = 0.0;
+  }
+}
+function raycastFromScreen(nx, ny){
+  pointer.set(nx, ny);
+  raycaster.setFromCamera(pointer, camera);
+  const hits = [];
+  scene.traverse(o=>{ if(o.isMesh) hits.push(o); });
+  const inter = raycaster.intersectObjects(hits, false);
+  for(const h of inter){
+    const name = findInteractiveRoot(h.object);
+    if(name) return { name, mesh:h.object };
+  }
+  return null;
+}
+canvas.addEventListener('pointermove', (e)=>{
+  if(mode!==MODE.ORBIT) return;
+  const nx = (e.clientX/window.innerWidth)*2-1, ny = -(e.clientY/window.innerHeight)*2+1;
+  const hit = raycastFromScreen(nx, ny);
+  if(hit){
+    if(hovered!==hit.mesh){ if(hovered) applyHover(hovered,false); hovered=hit.mesh; applyHover(hovered,true); }
+    canvas.style.cursor='pointer';
+  } else { if(hovered){ applyHover(hovered,false); hovered=null; } canvas.style.cursor='default'; }
+});
+canvas.addEventListener('click', (e)=>{
+  if(mode!==MODE.ORBIT) return;
+  const nx = (e.clientX/window.innerWidth)*2-1, ny = -(e.clientY/window.innerHeight)*2+1;
+  const hit = raycastFromScreen(nx, ny);
+  if(hit) openInspection(hit.name);
+});
+
+/* ============================================================ 10. SISTEMA DE INSPECCIÓN — cámara automática vía Box3 ============================================================ */
+let savedCamera = null;
+function calculateInspectionCamera(object){
+  const box = new THREE.Box3().setFromObject(object);
+  const center = new THREE.Vector3(); box.getCenter(center);
+  const size = new THREE.Vector3(); box.getSize(size);
+  const plazaCenter = new THREE.Vector3(0,0,0);
+  let dir = new THREE.Vector3().subVectors(center, plazaCenter); dir.y = 0;
+  if(dir.lengthSq() < 0.02) dir.set(0,0,1);
+  dir.normalize();
+  const horizontal = Math.max(size.x, size.z);
+  const distance = Math.max(4.5, horizontal*1.7 + size.y*0.55);
+  const camPos = center.clone().add(dir.multiplyScalar(distance));
+  camPos.y = box.min.y + size.y*0.38;
+  const lookAt = new THREE.Vector3(center.x, box.min.y + size.y*0.55, center.z);
+  return { camPos, lookAt, center, size };
+}
+
+function flyCameraTo(targetPos, targetLook, duration, onDone){
+  const startPos = camera.position.clone();
+  const startLook = mode===MODE.WALK ? getWalkLookPoint() : orbit.target.clone();
+  const t0 = performance.now();
+  function step(){
+    const p = Math.min((performance.now()-t0)/(duration*1000), 1);
+    const ep = easeInOutCubic(p);
+    camera.position.lerpVectors(startPos, targetPos, ep);
+    const look = new THREE.Vector3().lerpVectors(startLook, targetLook, ep);
+    camera.lookAt(look);
+    if(p<1) requestAnimationFrame(step); else onDone && onDone();
+  }
+  step();
+}
+function getWalkLookPoint(){
+  const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+  return camera.position.clone().add(dir.multiplyScalar(8));
+}
+
+function openInspection(name){
+  const entry = interactables[name];
+  const info = monumentInfo[name];
+  if(!entry || !info) return;
+
+  savedCamera = { mode, position: camera.position.clone(),
+    target: mode===MODE.ORBIT ? orbit.target.clone() : getWalkLookPoint(),
+    yaw, pitch, playerPos: playerPos.clone() };
+
+  const prevMode = mode;
+  mode = MODE.FLYING;
+  orbit.enabled = false;
+  if(document.pointerLockElement) document.exitPointerLock();
+
+  const { camPos, lookAt } = calculateInspectionCamera(entry.object);
+  flyCameraTo(camPos, lookAt, 1.6, ()=>{
+    mode = MODE.INSPECT;
+    openPanel(name, info, entry.object);
+  });
+}
+
+function closeInspection(){
+  disposeViewer();
+  panelOverlay.classList.remove('open');
+  if(!savedCamera){ mode = MODE.ORBIT; orbit.enabled = true; return; }
+  mode = MODE.FLYING;
+  const restoreMode = savedCamera.mode;
+  const targetPos = restoreMode===MODE.ORBIT ? savedCamera.position : new THREE.Vector3(savedCamera.playerPos.x, PLAYER_HEIGHT, savedCamera.playerPos.z);
+  const targetLook = savedCamera.target;
+  flyCameraTo(targetPos, targetLook, 1.3, ()=>{
+    if(restoreMode===MODE.ORBIT){
+      mode = MODE.ORBIT; orbit.enabled = true; orbit.target.copy(savedCamera.target); orbit.update();
+    } else {
+      mode = MODE.WALK; yaw = savedCamera.yaw; pitch = savedCamera.pitch;
+      playerPos.copy(savedCamera.playerPos);
+    }
+    savedCamera = null;
+  });
+}
+
+/* ============================================================ 11. PANEL + VISOR 3D INDEPENDIENTE (con INSPECTION_CONFIG) ============================================================ */
+const panelOverlay = document.getElementById('panel-overlay');
+const panelEyebrow = document.getElementById('panel-eyebrow');
+const panelTitle = document.getElementById('panel-title');
+const panelBody = document.getElementById('panel-body');
+let lastFocusedEl = null;
+
+let viewerScene, viewerCamera, viewerRenderer, viewerModel, viewerRotating=true;
+let viewerDragging=false, viewerLastX=0, viewerLastY=0, viewerYaw=0, viewerDist=0, viewerRO=null;
+let currentInspectName = null;
+
+function openPanel(name, info, sourceObject){
+  currentInspectName = name;
+  panelEyebrow.textContent = info.eyebrow;
+  panelTitle.textContent = info.title;
+  panelBody.innerHTML = info.body;
+  lastFocusedEl = document.activeElement;
+  panelOverlay.classList.add('open');
+  document.getElementById('panel-close').focus();
+  playSwoosh();
+  buildViewer(sourceObject);
+}
+
+function buildViewer(sourceObject){
+  const canvasEl = document.getElementById('viewer-canvas');
+  const box0 = canvasEl.getBoundingClientRect();
+  viewerScene = new THREE.Scene();
+  viewerCamera = new THREE.PerspectiveCamera(40, Math.max(1,box0.width)/Math.max(1,box0.height), 0.05, 200);
+  viewerRenderer = new THREE.WebGLRenderer({ canvas:canvasEl, antialias:true, alpha:true });
+  viewerRenderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  viewerRenderer.setSize(box0.width, box0.height, false);
+  viewerRenderer.outputColorSpace = THREE.SRGBColorSpace;
+  viewerRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+  // Vitrina: suelo circular (pedestal) + iluminación de estudio key/fill/rim
+  const floorViewer = new THREE.Mesh(new THREE.CircleGeometry(3,40), new THREE.MeshStandardMaterial({color:0x11151f, roughness:0.9, metalness:0.1}));
+  floorViewer.rotation.x = -Math.PI/2; floorViewer.position.y = 0; floorViewer.receiveShadow = true;
+  viewerScene.add(floorViewer);
+  const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(1.05,1.15,0.12,40), new THREE.MeshStandardMaterial({color:0x1c2233, roughness:0.6, metalness:0.25}));
+  pedestal.position.y = 0.06; viewerScene.add(pedestal);
+
+  const key = new THREE.DirectionalLight(0xfff2d8, 2.4); key.position.set(2.2,3,2.6); viewerScene.add(key);
+  const fill = new THREE.DirectionalLight(0xbcd4ff, 0.7); fill.position.set(-2.5,1.2,-1.5); viewerScene.add(fill);
+  const rim = new THREE.DirectionalLight(0xffffff, 1.1); rim.position.set(-1,2.5,-3); viewerScene.add(rim);
+  viewerScene.add(new THREE.AmbientLight(0xffffff, 0.25));
+
+  // Clonar jerarquía existente — NO recargar el GLB
+  viewerModel = sourceObject.clone(true);
+  viewerModel.traverse(o=>{ if(o.isMesh){ o.castShadow=false; o.receiveShadow=false; if(o.material) o.material = o.material.clone(); } });
+
+  // ----- Escala automática + configuración manual por monumento (INSPECTION_CONFIG) -----
+  const cfg = INSPECTION_CONFIG[currentInspectName] || { position:{x:0,y:0,z:0}, rotation:{x:0,y:0,z:0}, scaleMultiplier:1, cameraDistanceMultiplier:1, cameraHeightOffset:0 };
+
+  const box = new THREE.Box3().setFromObject(viewerModel);
+  const center = new THREE.Vector3(); box.getCenter(center);
+  const size = new THREE.Vector3(); box.getSize(size);
+  viewerModel.position.sub(center); // 1-6: bounding box -> centrar en origen
+
+  const maxDim = Math.max(size.x, size.y, size.z) || 1;
+  const targetSize = 2.1;
+  const autoScale = targetSize / maxDim;              // escala automática inteligente
+  const finalScale = autoScale * cfg.scaleMultiplier;  // auto-scale × ajuste manual
+  viewerModel.scale.setScalar(finalScale);
+
+  viewerModel.rotation.set(cfg.rotation.x, cfg.rotation.y, cfg.rotation.z);
+  viewerModel.position.x += cfg.position.x;
+  viewerModel.position.z += cfg.position.z;
+
+  // Centrado + apoyo sobre el pedestal tras aplicar escala/rotación
+  const box2 = new THREE.Box3().setFromObject(viewerModel);
+  viewerModel.position.y += -box2.min.y + 0.12 + cfg.position.y;
+
+  const group = new THREE.Group(); group.add(viewerModel);
+  viewerScene.add(group);
+  viewerModel.userData._group = group;
+
+  // Cámara adaptativa: distancia/altura calculadas + multiplicadores del monumento
+  viewerDist = targetSize * 1.9 * cfg.cameraDistanceMultiplier;
+  viewerYaw = 0.6;
+  const camY = targetSize*0.55 + cfg.cameraHeightOffset;
+  viewerCamera.position.set(Math.sin(viewerYaw)*viewerDist, camY, Math.cos(viewerYaw)*viewerDist);
+  viewerCamera.lookAt(0, targetSize*0.3 + cfg.cameraHeightOffset, 0);
+
+  viewerRotating = true;
+  document.getElementById('viewer-pause').textContent = '⏸';
+
+  viewerRO = new ResizeObserver(()=>{
+    const b = canvasEl.getBoundingClientRect();
+    if(b.width<2||b.height<2) return;
+    viewerCamera.aspect = b.width/b.height; viewerCamera.updateProjectionMatrix();
+    viewerRenderer.setSize(b.width, b.height, false);
+  });
+  viewerRO.observe(canvasEl);
+
+  animateViewer();
+}
+
+function animateViewer(){
+  if(!viewerRenderer) return;
+  requestAnimationFrame(animateViewer);
+  if(viewerModel && viewerRotating){ viewerModel.userData._group.rotation.y += 0.0042; }
+  viewerRenderer.render(viewerScene, viewerCamera);
+}
+
+function disposeViewer(){
+  if(viewerRO){ viewerRO.disconnect(); viewerRO=null; }
+  if(viewerScene){
+    viewerScene.traverse(o=>{
+      if(o.isMesh){
+        o.geometry && o.geometry.dispose && o.geometry.dispose();
+        const mats = Array.isArray(o.material)?o.material:[o.material];
+        mats.forEach(m=> m && m.dispose && m.dispose());
+      }
+    });
+  }
+  if(viewerRenderer){ viewerRenderer.dispose(); viewerRenderer=null; }
+  viewerScene = null; viewerCamera = null; viewerModel = null; currentInspectName = null;
+}
+
+/* Controles del visor: drag=rotar, scroll=zoom, pausa (reanuda rotación automática al soltar) */
+const viewerCanvasEl = document.getElementById('viewer-canvas');
+let viewerResumeTimer = null;
+viewerCanvasEl.addEventListener('pointerdown', (e)=>{ viewerDragging=true; viewerLastX=e.clientX; viewerLastY=e.clientY; viewerRotating=false; clearTimeout(viewerResumeTimer); });
+window.addEventListener('pointerup', ()=>{
+  if(!viewerDragging) return;
+  viewerDragging=false;
+  viewerResumeTimer = setTimeout(()=>{ if(document.getElementById('viewer-pause').textContent==='⏸') viewerRotating = true; }, 1400);
+});
+window.addEventListener('pointermove', (e)=>{
+  if(!viewerDragging || !viewerModel) return;
+  const dx = e.clientX - viewerLastX; viewerLastX = e.clientX; viewerLastY = e.clientY;
+  viewerModel.userData._group.rotation.y += dx*0.01;
+});
+viewerCanvasEl.addEventListener('wheel', (e)=>{
+  e.preventDefault();
+  if(!viewerCamera) return;
+  viewerDist = THREE.MathUtils.clamp(viewerDist + e.deltaY*0.002, 1.2, 6);
+  const dir = viewerCamera.position.clone().normalize();
+  viewerCamera.position.copy(dir.multiplyScalar(viewerDist));
+}, { passive:false });
+document.getElementById('viewer-pause').addEventListener('click', ()=>{
+  viewerRotating = !viewerRotating;
+  document.getElementById('viewer-pause').textContent = viewerRotating ? '⏸' : '▶';
+});
+
+document.getElementById('panel-close').addEventListener('click', closeInspection);
+panelOverlay.addEventListener('click', (e)=>{ if(e.target===panelOverlay) closeInspection(); });
+window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && panelOverlay.classList.contains('open')) closeInspection(); });
+
+/* ============================================================ 12. HOTSPOTS 3D ============================================================ */
+const hotspotLayer = document.getElementById('hotspot-layer');
+const hotspotEls = {};
+function buildHotspots(){
+  Object.entries(interactables).forEach(([name, {title}])=>{
+    const el = document.createElement('div');
+    el.className = 'hotspot';
+    el.innerHTML = `<span class="hs-label">${title}</span><span class="hs-line"></span><span class="hs-dot"></span>`;
+    el.addEventListener('click', ()=> openInspection(name));
+    el.addEventListener('touchend', (e)=>{ e.preventDefault(); openInspection(name); }, {passive:false});
+    hotspotLayer.appendChild(el);
+    hotspotEls[name] = el;
+  });
+}
+const _v = new THREE.Vector3();
+function updateHotspots(){
+  Object.entries(interactables).forEach(([name, {object}])=>{
+    const el = hotspotEls[name]; if(!el) return;
+    object.getWorldPosition(_v); _v.y += 2.2; _v.project(camera);
+    const behind = _v.z > 1;
+    el.style.left = ((_v.x*0.5+0.5)*window.innerWidth)+'px';
+    el.style.top = ((-_v.y*0.5+0.5)*window.innerHeight)+'px';
+    const visible = !behind && mode===MODE.ORBIT;
+    el.style.opacity = visible ? '1' : '0';
+    el.style.pointerEvents = visible ? 'auto' : 'none';
+  });
+}
+
+/* ============================================================ 13. MODO CAMINAR — movimiento suave, gravedad, colisiones ============================================================ */
+const keys = {};
+let yaw=0, pitch=0;
+const PLAYER_HEIGHT = 1.7;
+const LIMITE = 27;
+const playerPos = new THREE.Vector3(0, 0, 14);
+const velocity = new THREE.Vector2(0,0); // x,z en el plano
+const ACCEL = 22, FRICTION = 10, MAX_WALK = 3.0, MAX_RUN = 5.6;
+
+window.addEventListener('keydown', e=>{ keys[e.code]=true; if(e.code==='Escape' && document.pointerLockElement) document.exitPointerLock(); });
+window.addEventListener('keyup', e=> keys[e.code]=false);
+
+document.addEventListener('pointerlockchange', ()=>{
+  const locked = document.pointerLockElement === canvas;
+  document.getElementById('crosshair').style.display = (locked && mode===MODE.WALK) ? 'block' : 'none';
+});
+document.addEventListener('mousemove', (e)=>{
+  if(document.pointerLockElement !== canvas || mode!==MODE.WALK) return;
+  yaw -= e.movementX*0.0022; pitch -= e.movementY*0.0022;
+  pitch = THREE.MathUtils.clamp(pitch, -1.2, 1.2);
+});
+
+function resolveCollisions(nx, nz){
+  for(const c of colliders){
+    const dx = nx-c.center.x, dz = nz-c.center.z;
+    const dist = Math.sqrt(dx*dx+dz*dz);
+    if(dist < c.radius){ const push = c.radius/(dist||0.001); nx = c.center.x+dx*push; nz = c.center.z+dz*push; }
+  }
+  return [nx,nz];
+}
+
+const _fwd = new THREE.Vector3(), _right = new THREE.Vector3(), _up = new THREE.Vector3(0,1,0);
+function updateWalk(dt){
+  camera.rotation.set(0,0,0);
+  camera.rotateY(yaw); camera.rotateX(pitch);
+
+  _fwd.set(Math.sin(yaw),0,Math.cos(yaw)).normalize();
+  _right.crossVectors(_up,_fwd).normalize();
+
+  let ix=0, iz=0;
+  const mobileActive = isMobileActive();
+  if(!mobileActive){
+    if(keys['KeyW']){ ix+=_fwd.x; iz+=_fwd.z; }
+    if(keys['KeyS']){ ix-=_fwd.x; iz-=_fwd.z; }
+    if(keys['KeyA']){ ix-=_right.x; iz-=_right.z; }
+    if(keys['KeyD']){ ix+=_right.x; iz+=_right.z; }
+  } else {
+    ix = _fwd.x*(-mobileMove.y) + _right.x*(mobileMove.x);
+    iz = _fwd.z*(-mobileMove.y) + _right.z*(mobileMove.x);
+  }
+
+  const running = keys['ShiftLeft']||keys['ShiftRight']||mobileRun;
+  const maxSpeed = running ? MAX_RUN : MAX_WALK;
+  const inputLen = Math.hypot(ix,iz);
+  if(inputLen>0.001){
+    const nix = ix/inputLen, niz = iz/inputLen;
+    velocity.x += nix*ACCEL*dt; velocity.y += niz*ACCEL*dt;
+    const sp = Math.hypot(velocity.x, velocity.y);
+    if(sp>maxSpeed){ velocity.x = velocity.x/sp*maxSpeed; velocity.y = velocity.y/sp*maxSpeed; }
+  } else {
+    const sp = Math.hypot(velocity.x, velocity.y);
+    const drop = FRICTION*dt;
+    const newSp = Math.max(0, sp-drop);
+    if(sp>0.0001){ velocity.x = velocity.x/sp*newSp; velocity.y = velocity.y/sp*newSp; }
+  }
+
+  let nx = playerPos.x + velocity.x*dt;
+  let nz = playerPos.z + velocity.y*dt;
+  nx = THREE.MathUtils.clamp(nx, -LIMITE, LIMITE);
+  nz = THREE.MathUtils.clamp(nz, -LIMITE, LIMITE);
+  [nx,nz] = resolveCollisions(nx,nz);
+  playerPos.x = nx; playerPos.z = nz;
+  camera.position.set(playerPos.x, PLAYER_HEIGHT, playerPos.z); // gravedad simple: altura fija sobre el "suelo"
+}
+
+/* Interacción en modo caminar: click / botón "Ver" apuntando al centro de pantalla */
+function tryWalkInteract(){
+  const hit = raycastFromScreen(0,0);
+  if(hit){
+    const dist = camera.position.distanceTo(interactables[hit.name].object.getWorldPosition(new THREE.Vector3()));
+    if(dist < 8) openInspection(hit.name);
+  }
+}
+canvas.addEventListener('click', ()=>{ if(mode===MODE.WALK && document.pointerLockElement===canvas) tryWalkInteract(); });
+
+/* ============================================================ 14. CONTROLES MÓVILES (joystick + mirar) ============================================================ */
+let mobileMove = {x:0,y:0}, mobileRun=false;
+function isMobileActive(){ return document.getElementById('mobile-controls').classList.contains('active'); }
+const joystickZone = document.getElementById('joystick-zone');
+const joystickThumb = document.getElementById('joystick-thumb');
+let joyTouchId = null, joyCenter = {x:0,y:0};
+joystickZone.addEventListener('touchstart', (e)=>{
+  const t = e.changedTouches[0]; joyTouchId = t.identifier;
+  const r = joystickZone.getBoundingClientRect(); joyCenter = {x:r.left+r.width/2, y:r.top+r.height/2};
+  e.preventDefault();
+}, {passive:false});
+joystickZone.addEventListener('touchmove', (e)=>{
+  for(const t of e.changedTouches){
+    if(t.identifier!==joyTouchId) continue;
+    let dx = t.clientX-joyCenter.x, dy = t.clientY-joyCenter.y;
+    const max=44; const len=Math.hypot(dx,dy);
+    if(len>max){ dx=dx/len*max; dy=dy/len*max; }
+    joystickThumb.style.transform = `translate(${dx}px,${dy}px)`;
+    mobileMove = { x: dx/max, y: dy/max };
+  }
+  e.preventDefault();
+}, {passive:false});
+function joyEnd(e){ joyTouchId=null; mobileMove={x:0,y:0}; joystickThumb.style.transform='translate(0,0)'; }
+joystickZone.addEventListener('touchend', joyEnd);
+joystickZone.addEventListener('touchcancel', joyEnd);
+
+const lookZone = document.getElementById('look-zone');
+let lookTouchId=null, lookLast={x:0,y:0};
+lookZone.addEventListener('touchstart', (e)=>{ const t=e.changedTouches[0]; lookTouchId=t.identifier; lookLast={x:t.clientX,y:t.clientY}; });
+lookZone.addEventListener('touchmove', (e)=>{
+  for(const t of e.changedTouches){
+    if(t.identifier!==lookTouchId) continue;
+    const dx=t.clientX-lookLast.x, dy=t.clientY-lookLast.y; lookLast={x:t.clientX,y:t.clientY};
+    yaw -= dx*0.0035; pitch -= dy*0.0035; pitch = THREE.MathUtils.clamp(pitch,-1.2,1.2);
+  }
+  e.preventDefault();
+}, {passive:false});
+lookZone.addEventListener('touchend', ()=> lookTouchId=null);
+
+document.getElementById('mobile-interact').addEventListener('click', tryWalkInteract);
+document.getElementById('mobile-exit-walk').addEventListener('click', ()=> setWalkMode(false));
+
+/* ============================================================ 15. CAMBIO DE MODO ORBITAR / CAMINAR ============================================================ */
+const modeBtn = document.getElementById('mode-btn'), modeBtnMobile = document.getElementById('mode-btn-mobile');
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints>0;
+
+function setWalkMode(toWalk){
+  if(toWalk){
+    mode = MODE.WALK; orbit.enabled = false;
+    playerPos.set(camera.position.x, 0, camera.position.z);
+    yaw = Math.atan2(orbit.target.x-camera.position.x, orbit.target.z-camera.position.z);
+    pitch = 0; velocity.set(0,0);
+    modeBtn.textContent = '♙ Caminar'; modeBtnMobile.textContent='◉ Orbitar (salir)';
+    document.getElementById('mobile-controls').classList.toggle('active', isTouchDevice);
+    if(!isTouchDevice) canvas.requestPointerLock();
+    if(firstWalk){ firstWalk=false; document.getElementById('walk-tip').classList.add('show'); setTimeout(()=> document.getElementById('walk-tip').classList.remove('show'), 4200); }
+    if(typeof announce==='function') announce('Modo caminar activado');
+  } else {
+    mode = MODE.ORBIT;
+    if(document.pointerLockElement) document.exitPointerLock();
+    orbit.target.set(playerPos.x, 2, playerPos.z);
+    camera.position.set(playerPos.x, 9, playerPos.z+10);
+    orbit.enabled = true; orbit.update();
+    modeBtn.textContent = '◉ Orbitar'; modeBtnMobile.textContent = 'Caminar';
+    document.getElementById('mobile-controls').classList.remove('active');
+    if(typeof announce==='function') announce('Modo órbita activado');
+  }
+}
+modeBtn.addEventListener('click', ()=> setWalkMode(mode!==MODE.WALK));
+modeBtnMobile.addEventListener('click', ()=> { setWalkMode(mode!==MODE.WALK); closeDrawer(); });
+
+/* ============================================================ 16. HUD acciones + drawer móvil ============================================================ */
+function handleAction(action){
+  switch(action){
+    case 'historia': openHistoria(); break;
+    case 'audio': toggleAudio(); break;
+    case 'daynight': setDayNight(!dayMode); break;
+    case 'fullscreen': toggleFullscreen(); break;
+    case 'recenter': recenterView(); break;
+    case 'accesible': document.getElementById('accessible-view').classList.add('show'); break;
+  }
+}
+document.querySelectorAll('#hud-links button[data-action="historia"], #mobile-drawer button[data-action]').forEach(btn=>{
+  if(btn.dataset.action==='mode') return;
+  btn.addEventListener('click', ()=> { handleAction(btn.dataset.action); closeDrawer(); });
+});
+
+const drawer = document.getElementById('mobile-drawer');
+document.getElementById('hud-mobile-toggle').addEventListener('click', ()=>{ drawer.classList.add('open'); document.getElementById('hud-mobile-toggle').setAttribute('aria-expanded','true'); });
+document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+function closeDrawer(){ drawer.classList.remove('open'); document.getElementById('hud-mobile-toggle').setAttribute('aria-expanded','false'); }
+
+/* ============================================================ 17. HISTORIA OVERLAY ============================================================ */
+const historiaOverlay = document.getElementById('historia-overlay');
+const timelineData = [
+  {y:'1789', d:'Fundación del pueblo de Huanuni, ligado a las primeras explotaciones mineras en la zona.'},
+  {y:'1825', d:'Tras la independencia, la minería cobra mayor relevancia y se impulsa la producción de estaño.'},
+  {y:'1900', d:'Llegan empresas internacionales y se modernizan los métodos de extracción.'},
+  {y:'1952', d:'Revolución Nacional y nacionalización de las minas; Huanuni se convierte en eje de la minería estatal.'},
+  {y:'1985', d:'Crisis del estaño, pero la comunidad resiste y diversifica su economía.'},
+  {y:'Actualidad', d:'Huanuni mantiene su identidad minera, con un creciente interés en su patrimonio cultural e histórico.'}
+];
+const curiososData = [
+  {t:'🦙 El nombre', d:'"Huanuni" deriva del aymara "Wanuni", que significa "lugar de vicuñas".'},
+  {t:'⛏️ El socavón más profundo', d:'La mina de Huanuni tiene más de 500 metros de profundidad.'},
+  {t:'🏛️ Arquitectura minera', d:'Las casas de los barrios mineros conservan techos de calamina y fachadas de adobe.'},
+  {t:'🎭 Fiesta del Rosario', d:'La festividad de la Virgen del Rosario congrega a miles de personas cada 7 de octubre.'},
+  {t:'📜 La plaza', d:'Fue conocida originalmente como Plaza de la Recoba, un pequeño mercado de los primeros habitantes.'},
+  {t:'🛤️ Tren minero', d:'Existía un ferrocarril que conectaba la mina con la ciudad de Oruro, hoy en desuso.'}
+];
+const galleryData = [
+  {src:'./imagenes/foto_casco.jpg', alt:'Casco de la plaza'},
+  {src:'./imagenes/simon1.jpg', alt:'Busto de Simón Bolívar'},
+  {src:'./imagenes/dalence1.jpg', alt:'Estatua de Pantaleón Dalence Jiménez'},
+  {src:'./imagenes/lechin.jpg', alt:'Estatua de Juan Lechín Oquendo'},
+  {src:'./imagenes/placalechin.jpg', alt:'Placa de Juan Lechín Oquendo'},
+  {src:'./imagenes/placapanta.jpg', alt:'Placa conmemorativa de Pantaleón Dalence'}
+];
+function buildHistoriaContent(){
+  document.getElementById('h-timeline').innerHTML = timelineData.map(it=>`<div class="h-t-item"><div class="y">${it.y}</div><div class="d">${it.d}</div></div>`).join('');
+  document.getElementById('h-curiosos').innerHTML = curiososData.map(c=>`<div class="h-card"><h5>${c.t}</h5><p>${c.d}</p></div>`).join('');
+  document.getElementById('h-gallery').innerHTML = galleryData.map((g,i)=>`<figure data-i="${i}"><img src="${g.src}" alt="${g.alt}" loading="lazy"></figure>`).join('');
+  document.querySelectorAll('#h-gallery figure').forEach(fig=> fig.addEventListener('click', ()=> openLightbox(galleryData[+fig.dataset.i])));
+}
+buildHistoriaContent();
+const historiaIO = new IntersectionObserver(entries=> entries.forEach(en=>{ if(en.isIntersecting) en.target.classList.add('visible'); }), {threshold:.2});
+let statsAnimated=false, historiaLastFocus=null;
+function openHistoria(){
+  historiaLastFocus = document.activeElement;
+  historiaOverlay.classList.add('open');
+  document.querySelectorAll('.h-t-item').forEach(it=> historiaIO.observe(it));
+  if(!statsAnimated){
+    statsAnimated = true;
+    document.querySelectorAll('.h-stat .num').forEach(el=>{
+      const target = parseInt(el.dataset.count,10); let cur=0; const step=Math.max(1, Math.ceil(target/50));
+      const iv = setInterval(()=>{ cur+=step; if(cur>=target){cur=target; clearInterval(iv);} el.textContent=cur; }, 24);
+    });
+  }
+  document.getElementById('historia-close').focus();
+}
+document.getElementById('historia-close').addEventListener('click', ()=>{ historiaOverlay.classList.remove('open'); if(historiaLastFocus) historiaLastFocus.focus(); });
+window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && historiaOverlay.classList.contains('open')){ historiaOverlay.classList.remove('open'); if(historiaLastFocus) historiaLastFocus.focus(); } });
+
+/* ============================================================ 18. LIGHTBOX ============================================================ */
+const lightbox = document.getElementById('lightbox'); const lbImg = document.getElementById('lb-img');
+function openLightbox(item){ lbImg.src=item.src; lbImg.alt=item.alt; lightbox.classList.add('open'); }
+document.getElementById('lb-close').addEventListener('click', ()=> lightbox.classList.remove('open'));
+lightbox.addEventListener('click', (e)=>{ if(e.target===lightbox) lightbox.classList.remove('open'); });
+
+/* ============================================================ 19. AUDIO — ambiente + swoosh, sin autoplay ============================================================ */
+let audioCtx=null, ambientGain=null, ambientSource=null;
+function ensureAudio(){ if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }
+function toggleAudio(){
+  ensureAudio(); audioOn=!audioOn;
+  document.getElementById('btn-audio').textContent = audioOn?'🔊':'🔈';
+  if(audioOn){ if(audioCtx.state==='suspended') audioCtx.resume(); startAmbient(); } else stopAmbient();
+}
+document.getElementById('btn-audio').addEventListener('click', toggleAudio);
+function startAmbient(){
+  if(ambientSource) return;
+  const bufferSize = 2*audioCtx.sampleRate;
+  const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const out = noiseBuffer.getChannelData(0);
+  for(let i=0;i<bufferSize;i++) out[i] = (Math.random()*2-1)*0.35;
+  ambientSource = audioCtx.createBufferSource(); ambientSource.buffer=noiseBuffer; ambientSource.loop=true;
+  const filter = audioCtx.createBiquadFilter(); filter.type='lowpass'; filter.frequency.value=500;
+  ambientGain = audioCtx.createGain(); ambientGain.gain.value=0.05;
+  ambientSource.connect(filter).connect(ambientGain).connect(audioCtx.destination);
+  ambientSource.start();
+}
+function stopAmbient(){ if(ambientSource){ ambientSource.stop(); ambientSource.disconnect(); ambientSource=null; } }
+function playSwoosh(){
+  if(!audioOn || !audioCtx) return;
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type='sine'; o.frequency.setValueAtTime(320, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(700, audioCtx.currentTime+0.35);
+  g.gain.setValueAtTime(0.0001, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.06, audioCtx.currentTime+0.05); g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+0.4);
+  o.connect(g).connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+0.42);
+}
+
+/* ============================================================ 20. FULLSCREEN ============================================================ */
+function toggleFullscreen(){ if(!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.(); }
+document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
+
+/* ============================================================ 21. RESIZE ============================================================ */
+window.addEventListener('resize', ()=>{
+  camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ============================================================ 22. LOOP PRINCIPAL ============================================================ */
+const clock = new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  if(document.hidden) return;
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  if(mode===MODE.INTRO && introCurve) updateIntro();
+  else if(mode===MODE.ORBIT){ updateOrbitPan(dt); orbit.update(); }
+  else if(mode===MODE.WALK) updateWalk(dt);
+
+  updateHotspots();
+  if(starMat.opacity>0.01) stars.rotation.y += dt*0.0025; // deriva estelar casi imperceptible
+  cloudGroup.children.forEach(puff=>{ puff.position.x += puff.userData.speed*dt; if(puff.position.x>260) puff.position.x=-260; }); // deriva de nubes
+
+  renderer.render(scene, camera);
+}
+animate();
+
+/* ============================================================ 23. RECENTRAR CÁMARA ============================================================ */
+const modeAnnouncer = document.getElementById('mode-announcer');
+function announce(msg){ modeAnnouncer.textContent = msg; }
+
+function recenterView(){
+  if(mode===MODE.WALK){
+    playerPos.set(0,0,14); yaw = 0; pitch = 0; velocity.set(0,0);
+    announce('Vista recentrada');
+    return;
+  }
+  if(mode===MODE.ORBIT){
+    orbit.target.set(0,2,0);
+    flyCameraTo(new THREE.Vector3(0,9,20), new THREE.Vector3(0,2,0), 1.1, ()=>{ orbit.update(); });
+    announce('Vista recentrada');
+  }
+}
+document.getElementById('btn-recenter').addEventListener('click', recenterView);
+</script>
+</body>
+</html>
