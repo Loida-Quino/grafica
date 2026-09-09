@@ -29,7 +29,7 @@ let firstOrbitTip = true;
 // entra a ese modo. El recorrido en órbita usa su propio encuadre fijo, independiente de esto.
 let spawnPoint = new THREE.Vector3(0, 2, 0);
 
-/* ============================================================ 2. ESCENA / CÁMARA / RENDERER ============================================================ */
+/* ====================== 2. ESCENA / CÁMARA / RENDERER ============================================================ */
 const canvas = document.getElementById('app-canvas');
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x9fd3eb, 55, 165);
