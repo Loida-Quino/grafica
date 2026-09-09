@@ -529,7 +529,7 @@ draco.setDecoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/draco/')
 const gltfLoader = new GLTFLoader();
 gltfLoader.setDRACOLoader(draco);
 
-const MONUMENT_NAMES = ['estatua_fermin_lopez','estatua_juan_lechin','estatua_pantaleon_dalence','estatua_simon_bolivar','monumento_casco_minero'];
+const MONUMENT_NAMES = ['estatua_fermin_lopez','estatua_fermin_lopez1','estatua_juan_lechin','estatua_pantaleon_dalence','estatua_simon_bolivar','estatua_simon_bolivar1','monumento_casco_minero'];
 const interactables = {}; // name -> {object, title}
 const colliders = []; // {center:Vector3, radius}
 let plazaRoot = null;
@@ -617,10 +617,17 @@ const monumentInfo = {
   estatua_simon_bolivar:{ eyebrow:'Libertador de América · 1783–1830', title:'Simón Bolívar',
     body:`<p>Simón Bolívar fue uno de los principales líderes de la independencia sudamericana. Nacido en Caracas, encabezó campañas militares que contribuyeron a la liberación de Venezuela, Colombia, Ecuador, Perú y el Alto Perú del dominio español.</p>
     <p>En 1825, tras la independencia del Alto Perú, el nuevo Estado adoptó el nombre de Bolivia en su honor. El busto lo representa con uniforme militar, charreteras y adornos de laurel.</p>` },
-  estatua_fermin_lopez:{ eyebrow:'Pionero de la minería de Huanuni · 1863–1934', title:'Fermín López Téllez',
+  estatua_simon_bolivar1:{ eyebrow:'Libertador de América · 1783–1830', title:'Simón Bolívar',
+    body:`<p>Simón Bolívar fue uno de los principales líderes de la independencia sudamericana. Nacido en Caracas, encabezó campañas militares que contribuyeron a la liberación de Venezuela, Colombia, Ecuador, Perú y el Alto Perú del dominio español.</p>
+    <p>En 1825, tras la independencia del Alto Perú, el nuevo Estado adoptó el nombre de Bolivia en su honor. El busto lo representa con uniforme militar, charreteras y adornos de laurel.</p>` },
+    estatua_fermin_lopez:{ eyebrow:'Pionero de la minería de Huanuni · 1863–1934', title:'Fermín López Téllez',
     body:`<p>Fermín López Téllez fue un destacado dirigente minero de Huanuni, reconocido por su compromiso con la defensa de los derechos de los trabajadores y su liderazgo dentro del movimiento sindical.</p>
     <p>El busto instalado en la plaza que lleva su nombre constituye un homenaje a su legado y al aporte de los trabajadores mineros en la historia del municipio.</p>` },
-  estatua_pantaleon_dalence:{ eyebrow:'Padre de la Justicia Boliviana · 1815–1892', title:'Pantaleón Dalence Jiménez',
+  estatua_fermin_lopez1:{ eyebrow:'Pionero de la minería de Huanuni · 1863–1934', title:'Fermín López Téllez',
+    body:`<p>Fermín López Téllez fue un destacado dirigente minero de Huanuni, reconocido por su compromiso con la defensa de los derechos de los trabajadores y su liderazgo dentro del movimiento sindical.</p>
+    <p>El busto instalado en la plaza que lleva su nombre constituye un homenaje a su legado y al aporte de los trabajadores mineros en la historia del municipio.</p>` },
+  
+    estatua_pantaleon_dalence:{ eyebrow:'Padre de la Justicia Boliviana · 1815–1892', title:'Pantaleón Dalence Jiménez',
     body:`<p>Jurista y estadista boliviano nacido en Oruro. Se desempeñó como Presidente de la Corte Suprema de Justicia, Ministro de Hacienda y Prefecto de varios departamentos, reconocido como el Padre de la Justicia Boliviana.</p>
     <p>La provincia cuya capital es Huanuni lleva su nombre en reconocimiento a su aporte a la historia nacional.</p>` },
   estatua_juan_lechin:{ eyebrow:'Líder sindical · Secretario ejecutivo de la COB y la FSTMB', title:'Juan Lechín Oquendo',
