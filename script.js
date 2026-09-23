@@ -47,15 +47,18 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 
 /* Cielo */
-const sky = new Sky();
+/*const sky = new Sky();
 sky.scale.setScalar(2000);
 scene.add(sky);
 const skyU = sky.material.uniforms;
-skyU.turbidity.value = 3.2; skyU.rayleigh.value = 1.6; skyU.mieCoefficient.value = 0.0045; skyU.mieDirectionalG.value = 0.82;
+skyU.turbidity.value = 3.2; skyU.rayleigh.value = 1.6; skyU.mieCoefficient.value = 0.0045; skyU.mieDirectionalG.value = 0.82;*/
+/* Cielo plano de color sólido */
+const SKY_COLOR_DAY = 0x1e88ff;    // el azul de tu imagen
+const SKY_COLOR_NIGHT = 0x0b1633;  // azul oscuro para la noche
+scene.background = new THREE.Color(SKY_COLOR_DAY);
 const sunPos = new THREE.Vector3();
 function setSun(elevationDeg, azimuthDeg){
   sunPos.setFromSphericalCoords(1, THREE.MathUtils.degToRad(90-elevationDeg), THREE.MathUtils.degToRad(azimuthDeg));
-  skyU.sunPosition.value.copy(sunPos);
   sun.position.copy(sunPos).multiplyScalar(120);
 }
 
@@ -191,10 +194,28 @@ const gltfLoader = new GLTFLoader();
 gltfLoader.setDRACOLoader(draco);
 
 const MONUMENT_NAMES = ['estatua_fermin_lopez','estatua_fermin_lopez1','estatua_juan_lechin','estatua_pantaleon_dalence','estatua_simon_bolivar','estatua_simon_bolivar1','monumento_casco_minero'];
-const interactables = {}; // name -> {object, title}
+const interactables = {}; // name -> {object, title, box, (focus, anchor, isFlag para banderas)}
 const colliders = []; // {center:Vector3, radius} — colisión "circular" (monumentos)
 const boxColliders = []; // Box3[] — colisión rígida (piso / piso1): el personaje no puede atravesarlos
 let plazaRoot = null;
+
+/* ---- Superficies caminables "COL_*": invisibles, el personaje sube por ellas ---- */
+const COLLIDER_PATTERN = /^COL_/i;
+const DEBUG_COLLIDERS = false;      // true = las muestra en rojo para revisarlas
+const walkSurfaces = [];            // meshes COL_ usados para calcular la altura del suelo
+const groundRay = new THREE.Raycaster();
+const _gOrigin = new THREE.Vector3(), _gDown = new THREE.Vector3(0,-1,0);
+const STEP_UP = 0.8;                // cuánto más alto que sus pies puede "detectar" una rampa
+let groundY = 0;                    // altura actual del personaje
+
+function getGroundHeight(x, z){
+  if(!walkSurfaces.length) return 0;
+  _gOrigin.set(x, groundY + STEP_UP, z);
+  groundRay.set(_gOrigin, _gDown);
+  groundRay.far = STEP_UP + 8;
+  const hits = groundRay.intersectObjects(walkSurfaces, false);
+  return hits.length ? Math.max(0, hits[0].point.y) : 0;
+}
 
 gltfLoader.load('./proyecto_plaza.glb', (gltf)=>{
   plazaRoot = gltf.scene;
@@ -216,27 +237,42 @@ gltfLoader.load('./proyecto_plaza.glb', (gltf)=>{
     if(obj){
       interactables[name] = { object:obj, title: monumentInfo[name]?.title || name };
       const box = new THREE.Box3().setFromObject(obj);
+      interactables[name].box = box;   // caja para detectar el monumento en modo caminar
       const size = new THREE.Vector3(); box.getSize(size);
       const center = new THREE.Vector3(); box.getCenter(center);
       colliders.push({ center, radius: Math.max(size.x,size.z)*0.45 + 0.45 });
       console.log('✓ '+name+' encontrada');
-      if(dayMode===false){} // noop
     } else {
       console.warn('WARNING: no se encontró el nodo "'+name+'" en el GLB.');
     }
   });
 
-  // ---- Colisión rígida: "piso" / "piso1" — el personaje no puede atravesarlos ----
-  ['piso','piso1'].forEach(name=>{
-    const obj = plazaRoot.getObjectByName(name);
-    if(obj){
-      const box = new THREE.Box3().setFromObject(obj);
-      boxColliders.push(box);
-      console.log('✓ colisión registrada para "'+name+'"');
-    } else {
-      console.warn('WARNING: no se encontró el nodo "'+name+'" para colisión.');
-    }
+// ---- Colisión rígida: piso y paredes — el personaje no puede atravesarlos ----
+['piso','pared','pared1','pared2','pared3'].forEach(name=>{
+  const obj = plazaRoot.getObjectByName(name);
+  if(obj){
+    const box = new THREE.Box3().setFromObject(obj);
+    boxColliders.push(box);
+    if(name!=='piso') obj.visible = false;   // <- oculta las paredes, el piso sigue visible
+    console.log('✓ colisión registrada para "'+name+'"');
+  } else {
+    console.warn('WARNING: no se encontró el nodo "'+name+'" para colisión.');
+  }
+});
+
+  // ---- Superficies COL_*: se usan para la altura del suelo y se ocultan ----
+  plazaRoot.updateMatrixWorld(true);
+  plazaRoot.traverse(o=>{
+    if(!COLLIDER_PATTERN.test(o.name)) return;
+    o.traverse(m=>{
+      if(!m.isMesh || walkSurfaces.includes(m)) return;
+      m.material = new THREE.MeshBasicMaterial({ color:0xff0000, wireframe:true, side:THREE.DoubleSide });
+      m.castShadow = false; m.receiveShadow = false;
+      m.visible = DEBUG_COLLIDERS;
+      walkSurfaces.push(m);
+    });
   });
+  console.log('✓ '+walkSurfaces.length+' superficies COL_ registradas');
 
   // ---- Punto de aparición: empty "spawn_start" ----
   const spawnEmpty = plazaRoot.getObjectByName('spawn_start');
@@ -248,19 +284,23 @@ gltfLoader.load('./proyecto_plaza.glb', (gltf)=>{
     console.warn('WARNING: no se encontró el empty "spawn_start" en el GLB. Se usa (0,2,0) por defecto.');
   }
 
-  // ---- Banderas: efecto de viento (ver sección 4c) ----
+  // ---- Banderas: efecto de viento + interacción (ver sección 4c) ----
   // Tus banderas son grupos "ban_bolivia", "ban_huanuni", "ban_oruro", "ban_wipala" que
   // contienen el mesh real adentro (con nombres genéricos como "Plane.048" o "bandera_oruro").
+  // Cada una se registra también en "interactables", igual que las estatuas.
   plazaRoot.traverse(o=>{
-    if(FLAG_NAME_PATTERN.test(o.name)){
-      let flagMesh = o.isMesh ? o : null;
-      if(!flagMesh) o.traverse(child=>{ if(!flagMesh && child.isMesh) flagMesh = child; });
-      if(flagMesh){
-        setupFlag(flagMesh);
-        console.log('✓ bandera con viento: '+o.name+' -> '+flagMesh.name);
-      } else {
-        console.warn('WARNING: "'+o.name+'" coincide con el patrón de banderas pero no tiene ningún mesh adentro.');
-      }
+    if(!FLAG_NAME_PATTERN.test(o.name)) return;
+    // ignora un ban_* que esté dentro de otro ban_*
+    for(let p=o.parent; p; p=p.parent){ if(FLAG_NAME_PATTERN.test(p.name)) return; }
+
+    let flagMesh = o.isMesh ? o : null;
+    if(!flagMesh) o.traverse(child=>{ if(!flagMesh && child.isMesh) flagMesh = child; });
+    if(flagMesh){
+      setupFlag(flagMesh);
+      registerFlagInteractable(o, flagMesh);
+      console.log('✓ bandera interactiva: '+o.name+' -> '+flagMesh.name);
+    } else {
+      console.warn('WARNING: "'+o.name+'" coincide con el patrón de banderas pero no tiene ningún mesh adentro.');
     }
   });
   if(flagMeshes.length===0){
@@ -269,6 +309,8 @@ gltfLoader.load('./proyecto_plaza.glb', (gltf)=>{
 
   buildHotspots();
   buildNightLights();
+   buildEmptyLights(); 
+   setupWaterObjects(); 
   onLoadComplete();
 }, (xhr)=>{
   if(xhr.total){ const pct = Math.min(100, Math.round((xhr.loaded/xhr.total)*100)); loFill.style.width=pct+'%'; loPct.textContent=pct+'%'; }
@@ -297,6 +339,7 @@ const characterLoader = new GLTFLoader();
 characterLoader.setDRACOLoader(draco);
 characterLoader.load(CHARACTER_GLB_PATH, (gltf)=>{
   character = gltf.scene;
+  character.scale.setScalar(0.75);
   character.traverse(o=>{ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
   character.visible = false; // solo se muestra al entrar en modo caminar
   character.position.set(spawnPoint.x, 0, spawnPoint.z);
@@ -317,7 +360,7 @@ characterLoader.load(CHARACTER_GLB_PATH, (gltf)=>{
   }
 }, undefined, (err)=> console.warn('No se pudo cargar '+CHARACTER_GLB_PATH+' (verifica que esté en la misma carpeta del proyecto).', err));
 
-/* ============================================================ 4c. BANDERAS — efecto de viento (deformación de vértices) ============================================================ */
+/* ============================================================ 4c. BANDERAS — viento + interacción ============================================================ */
 // Tus banderas son los grupos "ban_bolivia", "ban_huanuni", "ban_oruro", "ban_wipala" (según tu outliner).
 // Si agregas más banderas y las nombras distinto, ajusta este patrón.
 const FLAG_NAME_PATTERN = /^ban_/i;
@@ -330,6 +373,9 @@ const WIND_AMPLITUDE = 0.16; // qué tanto se infla la tela (ajusta según la es
 
 function setupFlag(mesh){
   const geo = mesh.geometry;
+  // Doble cara: la tela se ve (y se puede clickear) desde ambos lados
+  [].concat(mesh.material).forEach(m=>{ if(m) m.side = THREE.DoubleSide; });
+
   geo.computeBoundingBox();
   const box = geo.boundingBox;
   const size = { x: box.max.x-box.min.x, y: box.max.y-box.min.y, z: box.max.z-box.min.z };
@@ -376,10 +422,94 @@ function updateFlags(t){
   });
 }
 
+/* ---- Interacción de banderas (misma mecánica que las estatuas) ---- */
+const FLAG_INFO = {
+  bolivia:{ eyebrow:'Símbolo patrio · Estado Plurinacional de Bolivia', title:'Bandera de Bolivia', label:'la bandera de Bolivia',
+    body:`<p>El tricolor boliviano está formado por tres franjas horizontales: roja, amarilla y verde. Fue adoptado oficialmente en 1851.</p>
+    <p>Tradicionalmente, el rojo representa la sangre derramada por los héroes de la patria, el amarillo las riquezas minerales y el verde la riqueza natural y la esperanza. En una plaza minera como esta, el amarillo tiene un significado especial.</p>` },
+  wiphala:{ eyebrow:'Símbolo de los pueblos andinos', title:'Wiphala', label:'la Wiphala',
+    body:`<p>La Wiphala es una bandera cuadrada de siete colores, dispuestos en 49 cuadros (7×7) que forman franjas en diagonal. Representa la unidad y la diversidad de los pueblos originarios andinos.</p>
+    <p>La Constitución Política del Estado de 2009 la reconoce como uno de los símbolos del Estado Plurinacional de Bolivia.</p>` },
+  huanuni:{ eyebrow:'Símbolo del municipio', title:'Bandera de Huanuni', label:'la bandera de Huanuni',
+    body:`<p>Identifica al municipio de Huanuni, capital de la provincia Pantaleón Dalence del departamento de Oruro.</p>
+    <p>Se iza en la plaza junto a los símbolos patrios como expresión de la identidad local y de la tradición minera del distrito.</p>` },
+  oruro:{ eyebrow:'Símbolo departamental', title:'Bandera de Oruro', label:'la bandera de Oruro',
+    body:`<p>Representa al departamento de Oruro, al que pertenece Huanuni. Oruro es conocida como la capital del folklore boliviano y su Carnaval fue proclamado por la UNESCO Obra Maestra del Patrimonio Oral e Intangible de la Humanidad en 2001.</p>` },
+  _default:{ eyebrow:'Bandera', title:'Bandera', label:'la bandera',
+    body:`<p>Bandera de la plaza.</p>` }
+};
+function flagInfoFor(name){
+  const n = name.toLowerCase();
+  const key = (n.includes('wipala')||n.includes('wiphala')) ? 'wiphala'
+            : n.includes('bolivia') ? 'bolivia'
+            : n.includes('huanuni') ? 'huanuni'
+            : n.includes('oruro')   ? 'oruro' : '_default';
+  return FLAG_INFO[key];
+}
+
+function registerFlagInteractable(obj, flagMesh){
+  const info = flagInfoFor(obj.name);
+  monumentInfo[obj.name] = info;                       // así openInspection() la encuentra
+  const focusObj = flagMesh || obj;
+  const box = new THREE.Box3().setFromObject(obj);      // caja para detección en modo caminar
+  const fbox = new THREE.Box3().setFromObject(focusObj);
+  const fc = new THREE.Vector3(); fbox.getCenter(fc);
+  interactables[obj.name] = {
+    object: obj,          // lo que se clona en el visor
+    focus: focusObj,      // lo que enfoca la cámara (la tela, no el asta)
+    title: info.title,
+    box,
+    anchor: new THREE.Vector3(fc.x, fbox.max.y + 0.6, fc.z), // dónde flota el hotspot
+    isFlag: true
+  };
+}
+
+/* ---- Agua animada: "agua" y "agua.001" ondulan con el tiempo ---- */
+const WATER_NAME_PATTERN = /^agua/i;
+const WATER_AMPLITUDE = 0.08;  // qué tan alto ondea (metros)
+const WATER_FREQ = 1.6;         // qué tan juntas van las ondas
+const WATER_SPEED = 1.1;        // velocidad de la animación
+const waterUniforms = { uTime: { value: 0 } };
+
+function setupWaterMaterial(mat){
+  if(!mat || mat.userData._waterPatched) return;
+  mat.userData._waterPatched = true;
+  const prevOnBeforeCompile = mat.onBeforeCompile;
+  mat.onBeforeCompile = (shader)=>{
+    if(prevOnBeforeCompile) prevOnBeforeCompile(shader);
+    shader.uniforms.uTime = waterUniforms.uTime;
+    shader.vertexShader = 'uniform float uTime;\n' + shader.vertexShader;
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      `#include <begin_vertex>
+      float wA = sin(position.x*${WATER_FREQ.toFixed(2)} + uTime*${WATER_SPEED.toFixed(2)});
+      float wB = sin(position.z*${(WATER_FREQ*1.3).toFixed(2)} - uTime*${(WATER_SPEED*0.8).toFixed(2)});
+      transformed.y += (wA + wB) * ${WATER_AMPLITUDE.toFixed(3)};`
+    );
+  };
+  mat.needsUpdate = true;
+}
+
+function setupWaterObjects(){
+  if(!plazaRoot) return;
+  let count = 0;
+  plazaRoot.traverse(o=>{
+    if(!WATER_NAME_PATTERN.test(o.name)) return;
+    o.traverse(child=>{
+      if(!child.isMesh) return;
+      [].concat(child.material).forEach(setupWaterMaterial);
+      count++;
+    });
+  });
+  if(count===0) console.warn('No se encontró ningún objeto con el patrón /^agua/i.');
+  else console.log('✓ '+count+' mesh(es) de agua animados');
+}
+
 /* ============================================================ 5. FOCOS NOCTURNOS ESTRATÉGICOS ============================================================ */
 function buildNightLights(){
   // Un foco por monumento (museo nocturno)
-  Object.entries(interactables).forEach(([name, {object}])=>{
+  Object.entries(interactables).forEach(([name, {object, isFlag}])=>{
+    if(isFlag) return; // las banderas no llevan foco propio
     const box = new THREE.Box3().setFromObject(object);
     const center = new THREE.Vector3(); box.getCenter(center);
     const size = new THREE.Vector3(); box.getSize(size);
@@ -412,6 +542,32 @@ function buildNightLights(){
   });
 }
 
+/* ---- Luces creadas desde empties "LIGHT_*" de Blender ---- */
+const LIGHT_NAME_PATTERN = /^LIGHT_/i;
+const LIGHT_COLOR = 0xfff0d0;       // color cálido
+const LIGHT_INTENSITY = 1;        // fuerza de cada luz
+const LIGHT_DISTANCE = 10;          // alcance base (m); se multiplica por la escala del empty
+const LIGHT_DECAY = 2;
+const LIGHT_ONLY_AT_NIGHT = false;   // true = solo de noche | false = siempre encendidas
+const emptyLights = [];
+
+function buildEmptyLights(){
+  if(!plazaRoot) return;
+  plazaRoot.updateMatrixWorld(true);
+  plazaRoot.traverse(o=>{
+    if(!LIGHT_NAME_PATTERN.test(o.name)) return;
+    const pos = new THREE.Vector3(); o.getWorldPosition(pos);
+    const sc = new THREE.Vector3(); o.getWorldScale(sc);
+    const startIntensity = (LIGHT_ONLY_AT_NIGHT && dayMode) ? 0 : LIGHT_INTENSITY;
+    const light = new THREE.PointLight(LIGHT_COLOR, startIntensity, LIGHT_DISTANCE * Math.max(sc.x, 0.001), LIGHT_DECAY);
+    light.position.copy(pos);
+    scene.add(light);
+    emptyLights.push(light);
+    console.log('✓ luz creada en empty: '+o.name);
+  });
+  if(emptyLights.length===0) console.warn('No se encontró ningún empty con el patrón /^LIGHT_/i.');
+}
+
 /* ============================================================ 6. CONTENIDO HISTÓRICO POR MONUMENTO ============================================================ */
 const monumentInfo = {
   monumento_casco_minero:{ eyebrow:'El casco minero con la Virgen del Rosario', title:'Casco Minero',
@@ -441,7 +597,9 @@ const monumentInfo = {
 
 /* ===== CONFIGURACIÓN DE MONUMENTOS (EXCLUSIVA del VISOR de inspección) =====
    No afecta la posición/escala/rotación del monumento dentro de la plaza.
-   Editar aquí para ajustar cada pieza individualmente. */
+   Editar aquí para ajustar cada pieza individualmente.
+   Las banderas usan valores por defecto; si una se ve muy pequeña en el visor, agrega aquí
+   una entrada con su nombre (ej. ban_bolivia) y ajusta scaleMultiplier / cameraDistanceMultiplier. */
 const INSPECTION_CONFIG = {
   estatua_fermin_lopez:      { position:{x:0,y:0,z:0}, rotation:{x:0,y:0,z:0}, scaleMultiplier:1,    cameraDistanceMultiplier:1.5,    cameraHeightOffset:0 },
   estatua_fermin_lopez1:      { position:{x:0,y:0,z:0}, rotation:{x:0,y:0,z:0}, scaleMultiplier:1,    cameraDistanceMultiplier:1.5,    cameraHeightOffset:0 },
@@ -449,7 +607,11 @@ const INSPECTION_CONFIG = {
   estatua_pantaleon_dalence: { position:{x:0,y:0,z:0}, rotation:{x:0,y:0,z:0}, scaleMultiplier:1,    cameraDistanceMultiplier:1,    cameraHeightOffset:0 },
   estatua_simon_bolivar:     { position:{x:0,y:0,z:0}, rotation:{x:0,y:0,z:0}, scaleMultiplier:1,    cameraDistanceMultiplier:1.5,    cameraHeightOffset:0 },
   estatua_simon_bolivar1:     { position:{x:0,y:0,z:0}, rotation:{x:0,y:0,z:0}, scaleMultiplier:1,    cameraDistanceMultiplier:1.5,    cameraHeightOffset:0 },
-  monumento_casco_minero:    { position:{x:0,y:0,z:0}, rotation:{x:0,y:0,z:0}, scaleMultiplier:0.85, cameraDistanceMultiplier:1.15, cameraHeightOffset:0.1 }
+  monumento_casco_minero:    { position:{x:0,y:0,z:0}, rotation:{x:0,y:0,z:0}, scaleMultiplier:0.85, cameraDistanceMultiplier:1.15, cameraHeightOffset:0.1 },
+  ban_bolivia: { position:{x:0,y:0,z:0}, rotation:{x:0,y:0,z:0}, scaleMultiplier:1, cameraDistanceMultiplier:1, cameraHeightOffset:0 },
+ban_huanuni: { position:{x:0,y:0,z:0}, rotation:{x:0,y:0,z:0}, scaleMultiplier:1, cameraDistanceMultiplier:1, cameraHeightOffset:0 },
+ban_oruro:   { position:{x:0,y:0,z:0}, rotation:{x:0,y:0,z:0}, scaleMultiplier:1, cameraDistanceMultiplier:1, cameraHeightOffset:0 },
+ban_wipala:  { position:{x:0,y:0,z:0}, rotation:{x:0,y:0,z:0}, scaleMultiplier:1, cameraDistanceMultiplier:1, cameraHeightOffset:0 },
 };
 
 /* ============================================================ 7. INTRO CINEMATOGRÁFICA ============================================================ */
@@ -589,7 +751,7 @@ function setDayNight(isDay){
     spot: isDay?0:1.8, pathL: isDay?0:0.95, moon: isDay?0:0.4, moonOpacity: isDay?0:0.95,
     haloOpacity: isDay?0:0.5, starOpacity: isDay?0:0.85, sunSpriteOpacity: isDay?0.9:0, cloudOpacity: isDay?0.5:0.12
   };
-  const start = { turbidity:skyU.turbidity.value, rayleigh:skyU.rayleigh.value, hemi:hemi.intensity, sunI:sun.intensity,
+  const start = { hemi:hemi.intensity, sunI:sun.intensity,
     ambI:ambient.intensity, exposure:renderer.toneMappingExposure, starOpacity:starMat.opacity,
     moonOpacity:moonDisc.material.opacity, haloOpacity:moonHalo.material.opacity,
     cloudOpacity: cloudGroup.children[0]?.children[0]?.material.opacity || 0.5 };
@@ -597,11 +759,15 @@ function setDayNight(isDay){
   const spots = nightLights.children.filter(c=>c.isSpotLight);
   const points = nightLights.children.filter(c=>c.isPointLight);
   const startSpot = spots[0]?.intensity||0, startPath = points[0]?.intensity||0, startMoon = moonLight.intensity;
+  const startEmpty = emptyLights[0]?.intensity || 0;
+const targetEmpty = (isDay && LIGHT_ONLY_AT_NIGHT) ? 0 : LIGHT_INTENSITY;
+const startBg = scene.background.clone();
+const targetBg = new THREE.Color(isDay ? SKY_COLOR_DAY : SKY_COLOR_NIGHT);
   function step(){
     const p = Math.min((performance.now()-t0)/dur, 1);
     const ep = easeInOutCubic(p);
-    skyU.turbidity.value = THREE.MathUtils.lerp(start.turbidity, targets.turbidity, ep);
-    skyU.rayleigh.value = THREE.MathUtils.lerp(start.rayleigh, targets.rayleigh, ep);
+    scene.background.lerpColors(startBg, targetBg, ep);
+scene.fog.color.copy(scene.background);
     hemi.intensity = THREE.MathUtils.lerp(start.hemi, targets.hemi, ep);
     sun.intensity = THREE.MathUtils.lerp(start.sunI, targets.sunI, ep);
     ambient.intensity = THREE.MathUtils.lerp(start.ambI, targets.ambI, ep);
@@ -615,6 +781,7 @@ function setDayNight(isDay){
     setSun(THREE.MathUtils.lerp(isDay?20:48, targets.elevation, ep), 135);
     spots.forEach(s=> s.intensity = THREE.MathUtils.lerp(startSpot, targets.spot, ep));
     points.forEach(pt=> pt.intensity = THREE.MathUtils.lerp(startPath, targets.pathL, ep));
+    emptyLights.forEach(l=> l.intensity = THREE.MathUtils.lerp(startEmpty, targetEmpty, ep));
     if(p<1) requestAnimationFrame(step);
   }
   step();
@@ -647,8 +814,8 @@ function raycastFromScreen(nx, ny){
   pointer.set(nx, ny);
   raycaster.setFromCamera(pointer, camera);
   const hits = [];
-  // Se excluye al personaje del raycast para que no bloquee la selección de monumentos en 3ª persona.
-  scene.traverse(o=>{ if(o.isMesh && !(character && isDescendantOf(o, character))) hits.push(o); });
+  // Se excluye al personaje y a los meshes ocultos (COL_*) para que no bloqueen la selección de monumentos.
+  scene.traverse(o=>{ if(o.isMesh && o.visible && !(character && isDescendantOf(o, character))) hits.push(o); });
   const inter = raycaster.intersectObjects(hits, false);
   for(const h of inter){
     const name = findInteractiveRoot(h.object);
@@ -723,7 +890,8 @@ function openInspection(name){
   orbit.enabled = false;
   if(document.pointerLockElement) document.exitPointerLock();
 
-  const { camPos, lookAt } = calculateInspectionCamera(entry.object);
+  // Para banderas la cámara enfoca la tela (entry.focus); para estatuas, el objeto completo.
+  const { camPos, lookAt } = calculateInspectionCamera(entry.focus || entry.object);
   flyCameraTo(camPos, lookAt, 1.6, ()=>{
     mode = MODE.INSPECT;
     openPanel(name, info, entry.object);
@@ -736,7 +904,7 @@ function closeInspection(){
   if(!savedCamera){ mode = MODE.ORBIT; orbit.enabled = true; return; }
   mode = MODE.FLYING;
   const restoreMode = savedCamera.mode;
-  const targetPos = restoreMode===MODE.ORBIT ? savedCamera.position : new THREE.Vector3(savedCamera.playerPos.x, PLAYER_HEIGHT, savedCamera.playerPos.z);
+  const targetPos = restoreMode===MODE.ORBIT ? savedCamera.position : new THREE.Vector3(savedCamera.playerPos.x, groundY + PLAYER_HEIGHT, savedCamera.playerPos.z);
   const targetLook = savedCamera.target;
   flyCameraTo(targetPos, targetLook, 1.3, ()=>{
     if(restoreMode===MODE.ORBIT){
@@ -814,13 +982,29 @@ function buildViewer(sourceObject){
   const finalScale = autoScale * cfg.scaleMultiplier;  // auto-scale × ajuste manual
   viewerModel.scale.setScalar(finalScale);
 
+const isFlag = !!interactables[currentInspectName]?.isFlag;
+if(isFlag){
+  // conserva la orientación original de la bandera y le suma tu rotación
+  viewerModel.rotation.x += cfg.rotation.x;
+  viewerModel.rotation.y += cfg.rotation.y;
+  viewerModel.rotation.z += cfg.rotation.z;
+} else {
   viewerModel.rotation.set(cfg.rotation.x, cfg.rotation.y, cfg.rotation.z);
-  viewerModel.position.x += cfg.position.x;
-  viewerModel.position.z += cfg.position.z;
+}
 
-  // Centrado + apoyo sobre el pedestal tras aplicar escala/rotación
-  const box2 = new THREE.Box3().setFromObject(viewerModel);
-  viewerModel.position.y += -box2.min.y + 0.12 + cfg.position.y;
+// Re-centrar en x/z después de rotar (solo banderas, para que giren sobre el pedestal)
+if(isFlag){
+  const bc = new THREE.Box3().setFromObject(viewerModel);
+  const cc = new THREE.Vector3(); bc.getCenter(cc);
+  viewerModel.position.x -= cc.x;
+  viewerModel.position.z -= cc.z;
+}
+viewerModel.position.x += cfg.position.x;
+viewerModel.position.z += cfg.position.z;
+
+// Apoyo sobre el pedestal tras aplicar escala/rotación
+const box2 = new THREE.Box3().setFromObject(viewerModel);
+viewerModel.position.y += -box2.min.y + 0.12 + cfg.position.y;
 
   const group = new THREE.Group(); group.add(viewerModel);
   viewerScene.add(group);
@@ -903,9 +1087,9 @@ window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && panelOverlay.cl
 const hotspotLayer = document.getElementById('hotspot-layer');
 const hotspotEls = {};
 function buildHotspots(){
-  Object.entries(interactables).forEach(([name, {title}])=>{
+  Object.entries(interactables).forEach(([name, {title, isFlag}])=>{
     const el = document.createElement('div');
-    el.className = 'hotspot';
+    el.className = 'hotspot' + (isFlag ? ' hotspot-flag' : '');
     el.innerHTML = `<span class="hs-label">${title}</span><span class="hs-line"></span><span class="hs-dot"></span>`;
     el.addEventListener('click', ()=> openInspection(name));
     el.addEventListener('touchend', (e)=>{ e.preventDefault(); openInspection(name); }, {passive:false});
@@ -915,9 +1099,12 @@ function buildHotspots(){
 }
 const _v = new THREE.Vector3();
 function updateHotspots(){
-  Object.entries(interactables).forEach(([name, {object}])=>{
+  Object.entries(interactables).forEach(([name, entry])=>{
     const el = hotspotEls[name]; if(!el) return;
-    object.getWorldPosition(_v); _v.y += 2.2; _v.project(camera);
+    // Banderas: el hotspot flota sobre la tela (anchor); estatuas: sobre su origen + 2.2
+    if(entry.anchor) _v.copy(entry.anchor);
+    else { entry.object.getWorldPosition(_v); _v.y += 2.2; }
+    _v.project(camera);
     const behind = _v.z > 1;
     el.style.left = ((_v.x*0.5+0.5)*window.innerWidth)+'px';
     el.style.top = ((-_v.y*0.5+0.5)*window.innerHeight)+'px';
@@ -927,11 +1114,11 @@ function updateHotspots(){
   });
 }
 
-/* ============================================================ 13. MODO CAMINAR — personaje 3D, "peso", giro suave y colisiones ============================================================ */
+/* ============================================================ 13. MODO CAMINAR — personaje 3D, "peso", giro suave, colisiones y rampas ============================================================ */
 const keys = {};
 let yaw=0, pitch=0.12;
 const PLAYER_HEIGHT = 1.7;
-const LIMITE = 27;
+//const LIMITE = 40;
 const PLAYER_RADIUS = 0.4; // "grosor" del personaje para las colisiones
 const playerPos = new THREE.Vector3(spawnPoint.x, 0, spawnPoint.z);
 const velocity = new THREE.Vector2(0,0); // x,z en el plano
@@ -944,7 +1131,11 @@ let characterYaw = 0, targetCharacterYaw = 0;
 const TURN_SMOOTH = 9; // más bajo = giro más lento/suave, más alto = giro más rápido
 
 // Cámara en 3ª persona: sigue al personaje detrás/arriba, orientada por "yaw" (mouse)
-const CAM_DIST = 6.2, CAM_HEIGHT = 3.0;
+// Cámara en 3ª persona sobre el hombro (estilo God of War 2018)
+const CAM_DIST = 2;        // qué tan cerca está la cámara del personaje
+const CAM_HEIGHT = 0.01;     // altura relativa a la cabeza (más baja que antes)
+const CAM_SHOULDER = 0.62;   // desplazamiento lateral hacia el hombro; negativo = hombro izquierdo
+const CAM_LOOK_AHEAD = 1;  // qué tan lejos mira adelante del personaje
 
 window.addEventListener('keydown', e=>{ keys[e.code]=true; if(e.code==='Escape' && document.pointerLockElement) document.exitPointerLock(); });
 window.addEventListener('keyup', e=> keys[e.code]=false);
@@ -1030,11 +1221,13 @@ function updateWalk(dt){
 
   let nx = playerPos.x + velocity.x*dt;
   let nz = playerPos.z + velocity.y*dt;
-  nx = THREE.MathUtils.clamp(nx, -LIMITE, LIMITE);
-  nz = THREE.MathUtils.clamp(nz, -LIMITE, LIMITE);
   [nx,nz] = resolveCollisions(nx,nz);
   [nx,nz] = resolveBoxCollisions(nx,nz);
   playerPos.x = nx; playerPos.z = nz;
+
+  // Altura del suelo (rampas COL_), con suavizado
+  const targetY = getGroundHeight(playerPos.x, playerPos.z);
+  groundY += (targetY - groundY) * (1 - Math.exp(-14*dt));
 
   // Giro suave (nunca brusco): el personaje interpola su rotación hacia targetCharacterYaw.
   const turnT = 1 - Math.exp(-TURN_SMOOTH*dt);
@@ -1045,7 +1238,7 @@ function updateWalk(dt){
 
   if(character){
     character.visible = true;
-    character.position.set(playerPos.x, 0, playerPos.z);
+    character.position.set(playerPos.x, groundY, playerPos.z);
     character.rotation.y = characterYaw + CHARACTER_YAW_OFFSET;
   }
   // La animación de caminar SOLO avanza si el personaje realmente se está moviendo.
@@ -1056,23 +1249,83 @@ function updateWalk(dt){
   }
 
   // Cámara en 3ª persona: sigue detrás del personaje según "yaw" (mouse) y un poco de altura según "pitch".
-  const camX = playerPos.x - Math.sin(yaw)*CAM_DIST;
-  const camZ = playerPos.z - Math.cos(yaw)*CAM_DIST;
-  const camY = PLAYER_HEIGHT + CAM_HEIGHT + pitch*3.2;
+    // Cámara sobre el hombro: se ubica detrás y a un lado del personaje (_fwd/_right ya calculados arriba)
+    // Cámara sobre el hombro: posición fija respecto al personaje (solo yaw), pitch solo inclina la mirada
+  const camX = playerPos.x - _fwd.x*CAM_DIST + _right.x*CAM_SHOULDER;
+  const camZ = playerPos.z - _fwd.z*CAM_DIST + _right.z*CAM_SHOULDER;
+  const camY = groundY + PLAYER_HEIGHT + CAM_HEIGHT;
   camera.position.set(camX, camY, camZ);
-  camera.lookAt(playerPos.x, PLAYER_HEIGHT + 0.9, playerPos.z);
+
+  // Dirección de mirada: combina yaw (izquierda/derecha) y pitch (arriba/abajo) en un solo vector,
+  // así la cámara rota sobre sí misma en vez de trasladarse.
+  const lookDirX = Math.sin(yaw) * Math.cos(pitch);
+  const lookDirZ = Math.cos(yaw) * Math.cos(pitch);
+  const lookDirY = Math.sin(pitch);
+
+  const lookX = camX + lookDirX * CAM_LOOK_AHEAD - _right.x*CAM_SHOULDER*0.5;
+  const lookZ = camZ + lookDirZ * CAM_LOOK_AHEAD - _right.z*CAM_SHOULDER*0.5;
+  const lookY = camY + lookDirY * CAM_LOOK_AHEAD;
+  camera.lookAt(lookX, lookY, lookZ);
 }
 
-/* Interacción en modo caminar: click / botón "Ver" apuntando al centro de pantalla */
-function tryWalkInteract(){
-  const hit = raycastFromScreen(0,0);
-  if(hit){
-    const from = new THREE.Vector3(playerPos.x, PLAYER_HEIGHT, playerPos.z);
-    const dist = from.distanceTo(interactables[hit.name].object.getWorldPosition(new THREE.Vector3()));
-    if(dist < 8) openInspection(hit.name);
+/* ---- Detección de monumento / bandera al frente (modo caminar) ---- */
+const INTERACT_DISTANCE = 4.5;   // qué tan cerca debes estar (en metros)
+const INTERACT_MARGIN = 0.8;     // tolerancia al apuntar (más alto = más fácil)
+const _ray = new THREE.Ray(), _rayOrigin = new THREE.Vector3(), _rayDir = new THREE.Vector3(), _expBox = new THREE.Box3(), _hitPt = new THREE.Vector3();
+let walkTarget = null;
+
+function findWalkTarget(){
+  _rayDir.set(Math.sin(yaw), 0, Math.cos(yaw)); // hacia donde apunta la cámara
+  let best = null, bestDist = Infinity;
+  for(const [name, entry] of Object.entries(interactables)){
+    if(!entry.box) continue;
+    _expBox.copy(entry.box).expandByScalar(INTERACT_MARGIN);
+    _rayOrigin.set(playerPos.x, (entry.box.min.y+entry.box.max.y)/2, playerPos.z);
+    _ray.set(_rayOrigin, _rayDir);
+    if(_ray.intersectBox(_expBox, _hitPt)){
+      const d = _rayOrigin.distanceTo(_hitPt);
+      if(d <= INTERACT_DISTANCE && d < bestDist){ best = name; bestDist = d; }
+    }
+  }
+  return best;
+}
+
+const interactPrompt = document.getElementById('interact-prompt');
+const interactText = document.getElementById('interact-prompt-text');
+const interactKey = document.getElementById('interact-key');
+let lastPromptName = null;
+
+function promptLabel(name){
+  if(name==='monumento_casco_minero') return 'el casco minero';
+  if(monumentInfo[name]?.label) return monumentInfo[name].label; // banderas
+  return 'la estatua de ' + (monumentInfo[name]?.title || '');
+}
+function updateInteractPrompt(){
+  walkTarget = (mode===MODE.WALK) ? findWalkTarget() : null;
+  if(walkTarget){
+    if(walkTarget !== lastPromptName){
+      lastPromptName = walkTarget;
+      interactKey.style.display = isTouchDevice ? 'none' : '';
+      interactText.textContent = (isTouchDevice ? 'Toca «Ver» para inspeccionar ' : 'Presiona E para inspeccionar ') + promptLabel(walkTarget);
+    }
+    interactPrompt.classList.add('show');
+  } else {
+    lastPromptName = null;
+    interactPrompt.classList.remove('show');
   }
 }
-canvas.addEventListener('click', ()=>{ if(mode===MODE.WALK && document.pointerLockElement===canvas) tryWalkInteract(); });
+
+function tryWalkInteract(){ if(walkTarget) openInspection(walkTarget); }
+
+window.addEventListener('keydown', (e)=>{
+  if(e.code==='KeyE' && !e.repeat && mode===MODE.WALK && walkTarget) openInspection(walkTarget);
+});
+
+canvas.addEventListener('click', ()=>{
+  if(mode!==MODE.WALK || isTouchDevice) return;
+  if(document.pointerLockElement!==canvas) canvas.requestPointerLock(); // re-captura el mouse tras cerrar la inspección
+  else tryWalkInteract();
+});
 
 /* ============================================================ 14. CONTROLES MÓVILES (joystick + mirar) ============================================================ */
 let mobileMove = {x:0,y:0}, mobileRun=false;
@@ -1126,6 +1379,7 @@ function setWalkMode(toWalk){
     // El personaje siempre aparece en el punto "spawn_start" al entrar al modo caminar.
     playerPos.set(spawnPoint.x, 0, spawnPoint.z);
     yaw = 0; pitch = 0.12; velocity.set(0,0);
+    groundY = 0;
     characterYaw = 0; targetCharacterYaw = 0;
     if(character){
       character.visible = true;
@@ -1282,7 +1536,9 @@ function animate(){
   else if(mode===MODE.WALK) updateWalk(dt);
 
   updateHotspots();
+  updateInteractPrompt();
   updateFlags(clock.elapsedTime); // ondulación de banderas por viento, siempre activa
+  waterUniforms.uTime.value = clock.elapsedTime; 
   if(starMat.opacity>0.01) stars.rotation.y += dt*0.0025; // deriva estelar casi imperceptible
   cloudGroup.children.forEach(puff=>{ puff.position.x += puff.userData.speed*dt; if(puff.position.x>260) puff.position.x=-260; }); // deriva de nubes
 
@@ -1297,6 +1553,7 @@ function announce(msg){ modeAnnouncer.textContent = msg; }
 function recenterView(){
   if(mode===MODE.WALK){
     playerPos.set(spawnPoint.x, 0, spawnPoint.z); yaw = 0; pitch = 0.12; velocity.set(0,0);
+    groundY = 0;
     characterYaw = 0; targetCharacterYaw = 0;
     announce('Vista recentrada');
     return;
