@@ -23,19 +23,25 @@
   <div class="lo-sub">Cargando experiencia 3D</div>
   <div class="lo-bar"><div class="lo-fill" id="lo-fill"></div></div>
   <div class="lo-pct" id="lo-pct">0%</div>
+  <div class="lo-tip" id="lo-tip" aria-hidden="true"></div>
   <div class="lo-err" id="lo-err">No se pudo cargar <code>proyecto_plaza.glb</code>. Verifica que el archivo esté en la misma carpeta.</div>
 </div>
 
 <header id="hud">
   <div class="brand"><span class="mark" aria-hidden="true"></span> Plaza Fermín López</div>
   <nav id="hud-links" aria-label="Navegación del recorrido">
-    <button data-action="historia" aria-label="Abrir historia y datos de la plaza">Historia</button>
     <button data-action="mode" id="mode-btn" aria-label="Cambiar entre orbitar y caminar">◉ Orbitar</button>
+    <button id="btn-goto" aria-haspopup="true" aria-expanded="false" aria-controls="goto-menu" aria-label="Ir a un monumento">Ir a</button>
+    <button id="btn-tour" aria-label="Iniciar recorrido guiado">Recorrido guiado</button>
   </nav>
   <div id="hud-tools">
     <button id="btn-recenter" aria-label="Recentrar cámara en la plaza" title="Recentrar vista">⌖</button>
-    <button id="btn-audio" aria-label="Activar sonido" title="Sonido">🔈</button>
+    <div id="audio-group">
+      <input type="range" class="vol-range" id="vol-slider" min="0" max="100" step="1" value="100" aria-label="Volumen">
+      <button id="btn-audio" aria-label="Activar sonido" title="Sonido">🔈</button>
+    </div>
     <button id="btn-daynight" aria-label="Cambiar a modo noche" title="Día / Noche">☀</button>
+    <button id="btn-photo" aria-label="Modo foto" title="Modo foto">📷</button>
     <button id="btn-fullscreen" aria-label="Pantalla completa" title="Pantalla completa">⛶</button>
     <button id="hud-mobile-toggle" aria-label="Abrir menú" aria-expanded="false">☰</button>
   </div>
@@ -45,10 +51,13 @@
 
 <nav id="mobile-drawer" aria-label="Menú móvil">
   <button id="drawer-close" aria-label="Cerrar menú">✕</button>
-  <button data-action="historia">Historia</button>
   <button data-action="mode" id="mode-btn-mobile">Caminar</button>
+  <button data-action="goto">Ir a un monumento</button>
+  <button data-action="tour">Recorrido guiado</button>
+  <button data-action="photo">Modo foto</button>
   <button data-action="recenter">Recentrar vista</button>
   <button data-action="audio">Audio</button>
+  <label class="vol-row">Volumen <input type="range" class="vol-range" id="vol-slider-m" min="0" max="100" step="1" value="100" aria-label="Volumen"></label>
   <button data-action="daynight">Día / Noche</button>
   <button data-action="fullscreen">Pantalla completa</button>
   <button data-action="accesible">Versión de solo texto</button>
@@ -101,11 +110,11 @@
     <section class="h-section"><h4>Línea de tiempo</h4><div class="h-timeline" id="h-timeline"></div></section>
 
     <section class="h-section">
-      <h4>Huanuni en cifras</h4>
+      <h4>Huanuni en fechas</h4>
       <div class="h-stats" id="h-stats">
-        <div class="h-stat"><div class="num" data-count="120">0</div><div class="lab">Años de historia minera</div></div>
-        <div class="h-stat"><div class="num" data-count="4500">0</div><div class="lab">Trabajadores (aprox.)</div></div>
-        <div class="h-stat"><div class="num" data-count="70">0</div><div class="lab">% de producción de estaño (Bolivia)</div></div>
+        <div class="h-stat"><div class="num" data-count="1919">0</div><div class="lab">Los mineros de Huanuni conquistan la jornada de ocho horas</div></div>
+        <div class="h-stat"><div class="num" data-count="1944">0</div><div class="lab">Se funda en Huanuni la FSTMB (11 de junio)</div></div>
+        <div class="h-stat"><div class="num" data-count="2006">0</div><div class="lab">El Estado recupera la mina de Huanuni</div></div>
       </div>
     </section>
 
@@ -147,6 +156,79 @@
   </div>
 </div>
 
+<!-- ESCENA CINEMATOGRÁFICA «MEMORIA DE HUANUNI» — se activa al terminar de subir las gradas -->
+<div id="cine" role="dialog" aria-modal="true" aria-label="Memoria de Huanuni: la historia de la plaza" aria-hidden="true">
+  <div class="cine-vig"></div>
+  <div class="cine-grade"></div>
+  <canvas id="cine-dust"></canvas>
+  <div class="cine-flash"></div>
+
+  <div class="cine-bar top">
+    <span class="cine-brand"><i></i>Memoria de Huanuni</span>
+    <div class="cine-progress" id="cine-progress"></div>
+    <button class="cine-skip" id="cine-skip" aria-label="Omitir la escena">Omitir <span aria-hidden="true">✕</span></button>
+  </div>
+
+  <div class="cine-stage" id="cine-stage" aria-live="polite">
+    <div class="cine-eyebrow rv" id="cine-eyebrow"></div>
+    <div class="cine-year rv" id="cine-year"></div>
+    <h2 class="cine-title" id="cine-title"></h2>
+    <div class="cine-rule"></div>
+    <div class="cine-text rv" id="cine-text"></div>
+    <button class="cine-cta rv" id="cine-explore">Recorrer la plaza <span aria-hidden="true">→</span></button>
+    <div class="cine-cta-hint rv" id="cine-cta-hint"></div>
+  </div>
+
+  <div class="cine-bar bottom">
+    <span class="cine-source" id="cine-source"></span>
+    <span class="cine-hint">Clic o → para continuar · ESC para omitir</span>
+    <div class="cine-nav">
+      <button id="cine-prev" aria-label="Capítulo anterior">‹</button>
+      <span id="cine-count">1 / 8</span>
+      <button id="cine-next" aria-label="Capítulo siguiente">›</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== EXTRAS: menú «Ir a», recorrido guiado, modo foto ===== -->
+<div id="goto-menu" role="menu" aria-label="Ir a un monumento" aria-hidden="true">
+  <div class="gm-head">Ir a</div>
+  <div class="gm-list" id="gm-list"></div>
+</div>
+
+<section id="tour-card" aria-live="polite" aria-hidden="true" aria-label="Recorrido guiado">
+  <div class="tc-top">
+    <span id="tour-count"></span>
+    <div id="tour-dots" aria-hidden="true"></div>
+    <button id="tour-exit" aria-label="Salir del recorrido">✕</button>
+  </div>
+  <h3 id="tour-title"></h3>
+  <div class="tc-eyebrow" id="tour-eyebrow"></div>
+  <p id="tour-text"></p>
+  <div class="tc-bar" aria-hidden="true"><i id="tour-bar"></i></div>
+  <div class="tc-ctrl">
+    <button id="tour-prev" aria-label="Monumento anterior">‹</button>
+    <button id="tour-play" aria-label="Pausar recorrido">❚❚</button>
+    <button id="tour-next" aria-label="Siguiente monumento">›</button>
+    <button id="tour-narr" class="tc-narr" aria-pressed="false">🔊 Narrar</button>
+  </div>
+</section>
+
+<div id="photo-bar" aria-hidden="true">
+  <div class="pb-filters" role="group" aria-label="Filtro de color">
+    <button data-filter="natural" class="on">Natural</button>
+    <button data-filter="calido">Cálido</button>
+    <button data-filter="cine">Cine</button>
+    <button data-filter="bn">B/N</button>
+  </div>
+  <button id="photo-shoot" aria-label="Tomar foto"><span></span></button>
+  <button id="photo-share" hidden>Compartir</button>
+  <button id="photo-exit">Salir</button>
+</div>
+<div id="photo-flash" aria-hidden="true"></div>
+<div id="fx-fade" aria-hidden="true"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
 <div id="lightbox"><button id="lb-close" aria-label="Cerrar imagen">✕</button><img id="lb-img" src="" alt=""></div>
 
 <div id="webgl-fallback">
@@ -172,8 +254,10 @@
     <p>Jurista y estadista boliviano, Presidente de la Corte Suprema de Justicia y Ministro de Hacienda, reconocido como el Padre de la Justicia Boliviana.</p>
     <h3>Juan Lechín Oquendo</h3>
     <p>Durante más de cuatro décadas fue la voz más influyente del sindicalismo minero boliviano, como Secretario Ejecutivo de la COB y la FSTMB. El monumento fue develado por dirigentes de la FSTMB.</p>
-    <h3>Huanuni en cifras</h3>
-    <p>120 años de historia minera · aproximadamente 4.500 trabajadores · 70% de la producción de estaño de Bolivia.</p>
+    <h3>Ficha técnica de la placa conmemorativa</h3>
+    <p>Proyecto «Construcción Plaza Principal Fermín López», Gobierno Autónomo Municipal de Huanuni, gestión 2017, que remodeló la plaza. Alcalde Municipal: Felipe Martínez Mamani. Concejo municipal: Gabriel Vilcaez López (presidente), Elisa Misericordia Soria (vicepresidenta), Carlos Tito Choque (secretario), Teodoro Gutiérrez Martínez, Walter Cerrogrande y Emilio Choque Valdez (concejales). Secretario técnico municipal: Ing. César Lazarte Titichoca. Supervisor de obra: Arq. Ernesto Callapa Rodríguez. Comité impulsor: Roberto Chávez S. (presidente de la Junta Vecinal), Carlos Candia F. (vicepresidente de zona), Alejandrina Jiménez de Romero (secretaria de hacienda). Dirección de obra: Ing. Gonzalo Becerra Herrera. Diseño de obra: Arq. Víctor Roque Núñez. Empresa constructora: Consultoría y Construcciones COCONBE Becerra.</p>
+    <h3>Huanuni en fechas</h3>
+    <p>Época colonial: se descubre la riqueza del cerro Posokoni, antes llamado Guaricunca y Kcoya Orco. 1908–1910: Simón I. Patiño reúne las concesiones mineras de la región. 1912: se crea el municipio de Huanuni. 1919: los mineros de Huanuni conquistan la jornada de ocho horas. 1944: se funda en Huanuni la Federación Sindical de Trabajadores Mineros de Bolivia (FSTMB). 1952: nacionalización de las minas y creación de COMIBOL. 1985: pese a la crisis del estaño, Huanuni sigue trabajando. 2006: el Estado recupera la mina. 2017: se construye la Plaza Principal Fermín López.</p>
   </div>
 </div>
 
