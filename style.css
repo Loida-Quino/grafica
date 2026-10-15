@@ -410,3 +410,17 @@ body.photo #hud, body.photo #hotspot-layer, body.photo #walk-tip, body.photo #or
 #toast.show{opacity:1; visibility:visible; transform:translate(-50%,0);}
 #fx-fade{position:fixed; inset:0; z-index:200; background:#04091c; opacity:0; pointer-events:none; transition:opacity .28s ease;}
 #fx-fade.on{opacity:1;}
+/* ===================== BIBLIOGRAFÍA Y CRÉDITOS ===================== */
+#credits-view{position:fixed; inset:0; z-index:610; background:#f4eedb; color:#1c1710; overflow-y:auto; display:none;}
+#credits-view.show{display:block;}
+#credits-view .cr-inner{max-width:760px; margin:0 auto; padding:80px 24px 100px;}
+#credits-view h2{font-family:var(--font-display); font-size:32px; color:#0d2a66;}
+#credits-view h3{font-family:var(--font-display); font-size:21px; margin:30px 0 8px; color:#a8492f;}
+#credits-view p, #credits-view li{line-height:1.7; margin-bottom:7px;}
+#credits-view ul{padding-left:20px; margin:0;}
+#credits-close{position:fixed; top:18px; right:20px; padding:12px 26px; background:#15120f; color:#fff; border-radius:24px; border:none; font-family:var(--font-eyebrow); font-size:12px; letter-spacing:.08em; text-transform:uppercase;}
+#credits-view ul.apa{list-style:none; padding:0;}
+#credits-view ul.apa li{padding-left:2em; text-indent:-2em; margin-bottom:12px; word-break:break-word;}
+#credits-view a{color:#0d2a66;}
+#credits-view .ph{background:#ffe27a; padding:0 3px; border-radius:3px;}
+#credits-view .cr-note{font-size:14px; color:#4a4034; margin-top:14px;}

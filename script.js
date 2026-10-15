@@ -1437,7 +1437,7 @@ function handleAction(action){
     case 'goto': toggleGoto(); break;
     case 'tour': startTour(); break;
     case 'photo': enterPhoto(); break;
-    case 'accesible': document.getElementById('accessible-view').classList.add('show'); break;
+    case 'creditos': document.getElementById('credits-view').classList.add('show'); break;
   }
 }
 document.querySelectorAll('#hud-links button[data-action="historia"], #mobile-drawer button[data-action]').forEach(btn=>{
@@ -1505,6 +1505,11 @@ function openHistoria(){
   document.getElementById('historia-close').focus();
 }
 document.getElementById('historia-close').addEventListener('click', ()=>{ historiaOverlay.classList.remove('open'); if(historiaLastFocus) historiaLastFocus.focus(); });
+(function(){
+  const cv=document.getElementById('credits-view');
+  document.getElementById('credits-close').addEventListener('click', ()=> cv.classList.remove('show'));
+  window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && cv.classList.contains('show')) cv.classList.remove('show'); });
+})();
 window.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && historiaOverlay.classList.contains('open')){ historiaOverlay.classList.remove('open'); if(historiaLastFocus) historiaLastFocus.focus(); } });
 
 /* ============================================================ 18. LIGHTBOX ============================================================ */
