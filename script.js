@@ -293,7 +293,7 @@ function buildWallCollider(obj){
   return {...best, minY, maxY};
 }
 
-['pared','pared1','pared2','pared3','pared4','pared5','pared6','pared7','pared8','pared9','pared10','pared11'].forEach(name=>{
+['pared','pared1','pared2','pared3','pared4','pared5','pared6','pared7','pared8','pared9','pared10','pared11','pared12','pared13'].forEach(name=>{
   const obj = plazaRoot.getObjectByName(name);
   if(!obj){ console.warn('no se encontró "'+name+'"'); return; }
   const col = buildWallCollider(obj);
