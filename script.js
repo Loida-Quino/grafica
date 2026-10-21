@@ -205,6 +205,7 @@ const MONUMENT_NAMES = ['estatua_fermin_lopez','estatua_fermin_lopez1','estatua_
 const interactables = {}; // name -> {object, title, box, (focus, anchor, isFlag para banderas)}
 const colliders = []; // {center:Vector3, radius} — colisión "circular" (monumentos)
 const boxColliders = []; // Box3[] — colisión rígida (piso / piso1): el personaje no puede atravesarlos
+const wallColliders = [];
 let plazaRoot = null;
 
 /* ---- Superficies caminables "COL_*": invisibles, el personaje sube por ellas ---- */
@@ -256,16 +257,48 @@ gltfLoader.load('./proyecto_plaza.glb', (gltf)=>{
   });
 
 // ---- Colisión rígida: piso y paredes — el personaje no puede atravesarlos ----
-['piso','pared','pared1','pared2','pared3'].forEach(name=>{
-  const obj = plazaRoot.getObjectByName(name);
-  if(obj){
-    const box = new THREE.Box3().setFromObject(obj);
-    boxColliders.push(box);
-    if(name!=='piso') obj.visible = false;   // <- oculta las paredes, el piso sigue visible
-    console.log('✓ colisión registrada para "'+name+'"');
-  } else {
-    console.warn('WARNING: no se encontró el nodo "'+name+'" para colisión.');
+// ---- Colisión rígida: piso (caja simple) ----
+plazaRoot.updateMatrixWorld(true);   // IMPORTANTE: antes de calcular cualquier caja
+
+const pisoObj = plazaRoot.getObjectByName('piso');
+if(pisoObj) boxColliders.push(new THREE.Box3().setFromObject(pisoObj, true));
+
+
+function buildWallCollider(obj){
+  const pts = [], v = new THREE.Vector3();
+  let minY = Infinity, maxY = -Infinity;
+  obj.traverse(m=>{
+    if(!m.isMesh) return;
+    const pos = m.geometry.attributes.position;
+    for(let i=0;i<pos.count;i++){
+      v.fromBufferAttribute(pos,i).applyMatrix4(m.matrixWorld);
+      pts.push(v.x, v.z);
+      if(v.y<minY) minY=v.y; if(v.y>maxY) maxY=v.y;
+    }
+  });
+  if(!pts.length) return null;
+  // rectángulo de área mínima en el plano XZ (prueba ángulos de 0° a 90°)
+  let best = null;
+  for(let deg=0; deg<90; deg+=1){
+    const a = deg*Math.PI/180, c = Math.cos(a), s = Math.sin(a);
+    let u0=Infinity,u1=-Infinity,w0=Infinity,w1=-Infinity;
+    for(let i=0;i<pts.length;i+=2){
+      const u =  pts[i]*c + pts[i+1]*s;
+      const w = -pts[i]*s + pts[i+1]*c;
+      if(u<u0)u0=u; if(u>u1)u1=u; if(w<w0)w0=w; if(w>w1)w1=w;
+    }
+    const area = (u1-u0)*(w1-w0);
+    if(!best || area<best.area) best = {area, c, s, u0,u1,w0,w1};
   }
+  return {...best, minY, maxY};
+}
+
+['pared','pared1','pared2','pared3','pared4','pared5','pared6','pared7','pared8','pared9','pared10','pared11'].forEach(name=>{
+  const obj = plazaRoot.getObjectByName(name);
+  if(!obj){ console.warn('no se encontró "'+name+'"'); return; }
+  const col = buildWallCollider(obj);
+  if(col) wallColliders.push(col);
+  obj.visible = false;
 });
 
   // ---- Superficies COL_*: se usan para la altura del suelo y se ocultan ----
@@ -1190,6 +1223,36 @@ function resolveBoxCollisions(nx, nz){
   }
   return [nx,nz];
 }
+function resolveWallCollisions(nx, nz){
+  const feetY = groundY, headY = groundY + PLAYER_HEIGHT;
+  for(const w of wallColliders){
+    // si la pared está totalmente por encima o por debajo del personaje, no bloquea
+    if(feetY >= w.maxY - 0.05 || headY <= w.minY + 0.05) continue;
+
+    // pasar al sistema local de la pared
+    const u =  nx*w.c + nz*w.s;
+    const v = -nx*w.s + nz*w.c;
+    const cu = THREE.MathUtils.clamp(u, w.u0, w.u1);
+    const cv = THREE.MathUtils.clamp(v, w.w0, w.w1);
+    const du = u-cu, dv = v-cv;
+    const d2 = du*du + dv*dv;
+    if(d2 < PLAYER_RADIUS*PLAYER_RADIUS){
+      let pu, pv;
+      if(d2 > 1e-8){                       // fuera del rectángulo: empujar hacia afuera
+        const d = Math.sqrt(d2), k = PLAYER_RADIUS/d;
+        pu = cu + du*k; pv = cv + dv*k;
+      } else {                             // dentro del rectángulo: salir por el lado más cercano
+        const l=u-w.u0, r=w.u1-u, b=v-w.w0, t=w.w1-v, m=Math.min(l,r,b,t);
+        pu=u; pv=v;
+        if(m===l) pu=w.u0-PLAYER_RADIUS; else if(m===r) pu=w.u1+PLAYER_RADIUS;
+        else if(m===b) pv=w.w0-PLAYER_RADIUS; else pv=w.w1+PLAYER_RADIUS;
+      }
+      nx = pu*w.c - pv*w.s;                // volver a coordenadas del mundo
+      nz = pu*w.s + pv*w.c;
+    }
+  }
+  return [nx,nz];
+}
 
 function lerpAngle(a, b, t){
   let diff = ((b-a+Math.PI)%(Math.PI*2))-Math.PI;
@@ -1238,6 +1301,7 @@ function updateWalk(dt){
   let nz = playerPos.z + velocity.y*dt;
   [nx,nz] = resolveCollisions(nx,nz);
   [nx,nz] = resolveBoxCollisions(nx,nz);
+  [nx,nz] = resolveWallCollisions(nx,nz);   // <- nuevo
   playerPos.x = nx; playerPos.z = nz;
 
   // Altura del suelo (rampas COL_), con suavizado
